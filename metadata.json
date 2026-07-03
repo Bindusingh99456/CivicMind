@@ -1,0 +1,6 @@
+{
+  "name": "CivicMind AI",
+  "description": "Smart city decision intelligence platform utilizing Gemini AI to analyze urban mobility, grid energy, public safety, environmental metrics, and geospatial hospital mapping.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
