@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CivicMind AI — Smart City Decision Intelligence Console</title>
+    <!-- Google Fonts: Inter & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Marked JS for parsing markdown in chat -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <!-- Background Neon Glows -->
+    <div class="neon-glow glow-cyan"></div>
+    <div class="neon-glow glow-indigo"></div>
+    <div class="neon-glow glow-purple"></div>
+
+    <div class="app-container">
+        <!-- Header Panel -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo-box">
+                    <span class="logo-sparkle">✨</span>
+                </div>
+                <div class="title-meta">
+                    <div class="title-row">
+                        <h1>CivicMind AI</h1>
+                        <span class="badge-engine">DECISION ENGINE</span>
+                    </div>
+                    <p class="subtitle">
+                        <span class="icon-db">🗄️</span>
+                        Dual-Mode Analytical Control Console (Flask Server + Gemini LLM)
+                    </p>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <div class="telemetry-pill">
+                    <span class="telemetry-dot animate-pulse-fast"></span>
+                    <span>TIME: <strong id="live-clock">SYNCING...</strong></span>
+                </div>
+                <div class="telemetry-pill" id="location-pill">
+                    <span class="telemetry-icon">📍</span>
+                    <span>GPS: <strong id="live-coords">DEFAULT CENTRAL</strong></span>
+                </div>
+                <button id="recalculate-btn" class="icon-btn" title="Recalculate Matrices">
+                    <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Workspace Area -->
+        <main class="app-main">
+            <!-- Left Side: Metrics & Analytics Screen (2/3 width on desktop) -->
+            <div class="dashboard-section">
+                <!-- Overview Stats Grid -->
+                <section class="stats-grid">
+                    <!-- AQI Stat Card -->
+                    <div class="stat-card border-emerald">
+                        <div class="stat-icon-wrapper bg-emerald">
+                            <span class="stat-icon">🍃</span>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Air Quality Index</span>
+                            <span class="stat-value" id="val-aqi">--</span>
+                            <span class="stat-subtext text-emerald" id="sub-aqi">● Good to Moderate</span>
+                        </div>
+                    </div>
+                    <!-- Avg Traffic Stat Card -->
+                    <div class="stat-card border-cyan">
+                        <div class="stat-icon-wrapper bg-cyan">
+                            <span class="stat-icon">📈</span>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Avg Traffic Flow</span>
+                            <span class="stat-value" id="val-traffic">--</span>
+                            <span class="stat-subtext text-cyan" id="sub-traffic">Stable Velocity Matrix</span>
+                        </div>
+                    </div>
+                    <!-- Peak Demand Stat Card -->
+                    <div class="stat-card border-amber">
+                        <div class="stat-icon-wrapper bg-amber">
+                            <span class="stat-icon">⚡</span>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Grid Peak Demand</span>
+                            <span class="stat-value" id="val-energy">--</span>
+                            <span class="stat-subtext text-amber" id="sub-energy">78% capacity state</span>
+                        </div>
+                    </div>
+                    <!-- Ambulance ETA Stat Card -->
+                    <div class="stat-card border-purple">
+                        <div class="stat-icon-wrapper bg-purple">
+                            <span class="stat-icon">🕒</span>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Ambulance ETA</span>
+                            <span class="stat-value" id="val-ambulance">--</span>
+                            <span class="stat-subtext text-purple" id="sub-ambulance">Wait-time: --</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Dynamic Simulation Screen (Visual Charts panel) -->
+                <section class="charts-panel panel-card">
+                    <div class="panel-header">
+                        <div class="panel-title-block">
+                            <span class="panel-label">
+                                <span class="pulse-ring"></span>
+                                DYNAMIC SIMULATION SCREEN
+                            </span>
+                            <h3 id="active-domain-title">Smart City Systems Core Insights</h3>
+                        </div>
+                        <div class="filter-tab-bar" id="chart-tabs">
+                            <button class="tab-btn active" data-id="all">Master System</button>
+                            <button class="tab-btn" data-id="mobility">Mobility</button>
+                            <button class="tab-btn" data-id="safety">Safety</button>
+                            <button class="tab-btn" data-id="health">Health</button>
+                            <button class="tab-btn" data-id="energy">Energy</button>
+                        </div>
+                    </div>
+
+                    <div class="panel-body">
+                        <!-- Loader element while pulling data -->
+                        <div class="telemetry-loader" id="chart-loader">
+                            <div class="spinner">
+                                <div class="spinner-ring"></div>
+                                <div class="spinner-accent"></div>
+                            </div>
+                            <p>PULLING LIVE SENSOR STREAM...</p>
+                        </div>
+
+                        <!-- Content Render Containers -->
+                        <div class="chart-content-area" id="chart-render-area">
+                            <!-- Dynamically loaded visual interfaces -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Predictive Alerts Log -->
+                <section class="alerts-log panel-card">
+                    <div class="panel-header">
+                        <div class="panel-title-block flex-row justify-between">
+                            <div class="flex-align">
+                                <span class="alert-icon-main">⚠️</span>
+                                <h3>Active Predictive Alerts Log</h3>
+                            </div>
+                            <span class="header-refresh-status">Auto-Refreshes Live</span>
+                        </div>
+                    </div>
+                    <div class="panel-body max-h-scroll">
+                        <div class="alerts-container" id="alerts-list">
+                            <!-- Alerts populated via Javascript -->
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Side: AI Assistant & Sector Matrix Panel (1/3 width on desktop) -->
+            <div class="sidebar-section">
+                <!-- AI Assistant Chat Terminal -->
+                <section class="chat-terminal panel-card" id="chat-card">
+                    <div class="chat-header">
+                        <div class="flex-align gap-2">
+                            <span class="chat-status-dot"></span>
+                            <h3>Decision AI Copilot</h3>
+                        </div>
+                        <div class="chat-actions">
+                            <button id="location-req-btn" class="pill-btn flex-align gap-1" title="Update Location">
+                                📍 <span id="chat-gps-label">GPS Off</span>
+                            </button>
+                            <button id="clear-chat-btn" class="icon-btn-sm" title="Reset Conversation">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Chat Messages List -->
+                    <div class="chat-messages scrollbar-styled" id="chat-messages-container">
+                        <!-- Hydrated dynamically -->
+                    </div>
+
+                    <!-- Suggestion Pills -->
+                    <div class="suggestion-tray" id="suggestion-tray">
+                        <!-- Suggestion buttons added here -->
+                    </div>
+
+                    <!-- Chat Input Form -->
+                    <form class="chat-input-form" id="chat-input-form">
+                        <input type="text" id="chat-input" placeholder="Ask analytical simulation questions..." autocomplete="off">
+                        <button type="submit" id="chat-submit-btn">
+                            <svg class="send-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                        </button>
+                    </form>
+                </section>
+
+                <!-- Interactive Domain Matrix Selector -->
+                <section class="matrix-selector panel-card">
+                    <div class="panel-header">
+                        <span class="panel-label text-cyan">🎛️ System Sectors Matrix</span>
+                        <p class="panel-desc">Click any sector domain to isolate its analytical dashboard telemetry and view system gauges.</p>
+                    </div>
+                    <div class="panel-body max-h-scroll pr-1">
+                        <div class="matrix-grid-list" id="sectors-list">
+                            <!-- Hydrated dynamically -->
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Recommended Policy Simulation Models (Full Width Bottom Shelf) -->
+        <footer class="app-footer-simulation panel-card">
+            <div class="panel-header border-bottom">
+                <div class="flex-align justify-between w-full">
+                    <span class="panel-label text-cyan flex-align gap-1">
+                        ℹ️ Recommended Policy Simulation Models
+                    </span>
+                    <span class="header-refresh-status">Simulate Action Outcomes</span>
+                </div>
+            </div>
+            <div class="panel-body grid-3-cols mt-4" id="simulations-list">
+                <!-- Simulation cards hydrated dynamically -->
+            </div>
+        </footer>
+    </div>
+
+    <!-- Chart Tooltip -->
+    <div id="chart-tooltip" class="chart-tooltip" style="display: none;"></div>
+
+    <!-- Custom JavaScript -->
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
