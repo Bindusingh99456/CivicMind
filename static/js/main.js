@@ -113,6 +113,7 @@ async function fetchData(isManual = false) {
 
         // Hydrate Core UI Elements
         updateStats();
+        updateTabButtons();
         updateSectorsList();
         updateAlertsList();
         updateSimulationsList();
@@ -198,6 +199,41 @@ function updateSectorsList() {
         `;
         row.addEventListener("click", () => selectDomain(domain.id));
         sectorsList.appendChild(row);
+    });
+}
+
+// Update dynamic tab buttons in the chart panel
+function updateTabButtons() {
+    if (!chartTabsContainer) return;
+    
+    chartTabsContainer.innerHTML = "";
+    
+    // Add Master System tab
+    const masterActive = activeDomainId === "all" ? "active" : "";
+    const masterBtn = document.createElement("button");
+    masterBtn.className = `tab-btn ${masterActive}`;
+    masterBtn.setAttribute("data-id", "all");
+    masterBtn.textContent = "Master System";
+    masterBtn.addEventListener("click", () => selectDomain("all"));
+    chartTabsContainer.appendChild(masterBtn);
+    
+    const getShortName = (name) => {
+        if (name.includes("Healthcare")) return "Health";
+        if (name.includes("Environmental")) return "Environment";
+        if (name.includes("Education")) return "Education";
+        if (name.includes("Citizen")) return "Citizen";
+        return name.split(" ")[0];
+    };
+    
+    // Add tab buttons for all domains
+    cachedDomains.forEach(domain => {
+        const active = activeDomainId === domain.id ? "active" : "";
+        const btn = document.createElement("button");
+        btn.className = `tab-btn ${active}`;
+        btn.setAttribute("data-id", domain.id);
+        btn.textContent = getShortName(domain.name);
+        btn.addEventListener("click", () => selectDomain(domain.id));
+        chartTabsContainer.appendChild(btn);
     });
 }
 
@@ -492,6 +528,111 @@ function renderActiveChart() {
         chartRenderArea.appendChild(grid);
         
         drawSafetyDeepChart("safety-deep-chart");
+        
+    } else if (activeDomainId === "health") {
+        const desc = document.createElement("p");
+        desc.className = "deep-dive-desc";
+        desc.textContent = "Evaluating geospatial healthcare resources. Geographic zones 3-North and East represent high-risk medical deserts (>8km to clinics). Ambulances are pre-positioned to optimize ETA.";
+        
+        const grid = document.createElement("div");
+        grid.className = "grid-2-cols-split";
+        
+        const chartCol = document.createElement("div");
+        chartCol.id = "health-deep-chart";
+        grid.appendChild(chartCol);
+        
+        const sideCol = document.createElement("div");
+        sideCol.className = "deep-dive-sidebar";
+        sideCol.innerHTML = `
+            <div class="deep-sidebar-item">
+                <span class="deep-sidebar-label" style="color: var(--clr-emerald)">🏥 Total Clinics</span>
+                <p class="deep-sidebar-text">${cachedMetrics.health.clinics} active municipal facilities</p>
+            </div>
+            <div class="deep-sidebar-item">
+                <span class="deep-sidebar-label" style="color: var(--clr-purple)">🕒 Emergency Dispatch ETA</span>
+                <p class="deep-sidebar-text">Current ambulance response index is ${cachedMetrics.health.ambulance_eta} mins.</p>
+            </div>
+            <div class="deep-sidebar-item">
+                <span class="deep-sidebar-label" style="color: var(--clr-indigo)">🛌 Bed Capacity</span>
+                <p class="deep-sidebar-text">Available beds index is ${cachedMetrics.health.beds} score.</p>
+            </div>
+        `;
+        grid.appendChild(sideCol);
+        
+        chartRenderArea.appendChild(desc);
+        chartRenderArea.appendChild(grid);
+        
+        drawHealthDeepChart("health-deep-chart");
+        
+    } else if (activeDomainId === "environment") {
+        const desc = document.createElement("p");
+        desc.className = "deep-dive-desc";
+        desc.textContent = `Monitoring high-frequency particulate count across key industrial ringways. Air Quality Index currently registers at ${cachedMetrics.aqi.score} (Moderate). Proposed green corridors aim to offset emissions by 40% over 3 years.`;
+        
+        const container = document.createElement("div");
+        container.className = "deep-dive-chart-container";
+        container.id = "environment-deep-chart";
+        
+        chartRenderArea.appendChild(desc);
+        chartRenderArea.appendChild(container);
+        
+        drawEnvironmentDeepChart("environment-deep-chart");
+        
+    } else if (activeDomainId === "energy") {
+        const desc = document.createElement("p");
+        desc.className = "deep-dive-desc";
+        desc.textContent = "Predictive analysis of smart grid peak load and renewable energy supply. Real-time battery bank storage discharge buffers grid stress during evening rush hours.";
+        
+        const container = document.createElement("div");
+        container.className = "deep-dive-chart-container";
+        container.id = "energy-deep-chart";
+        
+        chartRenderArea.appendChild(desc);
+        chartRenderArea.appendChild(container);
+        
+        drawEnergyDeepChart("energy-deep-chart");
+        
+    } else if (activeDomainId === "waste") {
+        const desc = document.createElement("p");
+        desc.className = "deep-dive-desc";
+        desc.textContent = "Smart waste management loops. Optimization of collection routing, sensor-enabled bin fill rate tracking, and regional landfill diversion policies.";
+        
+        const container = document.createElement("div");
+        container.className = "deep-dive-chart-container";
+        container.id = "waste-deep-chart";
+        
+        chartRenderArea.appendChild(desc);
+        chartRenderArea.appendChild(container);
+        
+        drawWasteDeepChart("waste-deep-chart");
+        
+    } else if (activeDomainId === "education") {
+        const desc = document.createElement("p");
+        desc.className = "deep-dive-desc";
+        desc.textContent = "Tracking lifelong learning participation, vocational education attendance, and school resource gap indexes across municipal zones.";
+        
+        const container = document.createElement("div");
+        container.className = "deep-dive-chart-container";
+        container.id = "education-deep-chart";
+        
+        chartRenderArea.appendChild(desc);
+        chartRenderArea.appendChild(container);
+        
+        drawEducationDeepChart("education-deep-chart");
+        
+    } else if (activeDomainId === "citizen") {
+        const desc = document.createElement("p");
+        desc.className = "deep-dive-desc";
+        desc.textContent = "Analyzing public sentiment from municipal feedback channels. Tracking public service response satisfaction scores across different departments.";
+        
+        const container = document.createElement("div");
+        container.className = "deep-dive-chart-container";
+        container.id = "citizen-deep-chart";
+        
+        chartRenderArea.appendChild(desc);
+        chartRenderArea.appendChild(container);
+        
+        drawCitizenDeepChart("citizen-deep-chart");
         
     } else {
         // Fallback placeholder card for other metrics
@@ -1023,14 +1164,6 @@ function initChatSuggestions() {
 function setupEvents() {
     // Recalculate Btn
     recalculateBtn.addEventListener("click", () => fetchData(true));
-    
-    // Tab filtering btns
-    const tabBtns = chartTabsContainer.querySelectorAll(".tab-btn");
-    tabBtns.forEach(btn => {
-        btn.addEventListener("click", () => {
-            selectDomain(btn.getAttribute("data-id"));
-        });
-    });
     
     // Chat Submit Form
     chatInputForm.addEventListener("submit", (e) => {
