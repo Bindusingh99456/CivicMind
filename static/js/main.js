@@ -113,6 +113,7 @@ async function fetchData(isManual = false) {
 
         // Hydrate Core UI Elements
         updateStats();
+        updateTabButtons();
         updateSectorsList();
         updateAlertsList();
         updateSimulationsList();
@@ -198,6 +199,41 @@ function updateSectorsList() {
         `;
         row.addEventListener("click", () => selectDomain(domain.id));
         sectorsList.appendChild(row);
+    });
+}
+
+// Update dynamic tab buttons in the chart panel
+function updateTabButtons() {
+    if (!chartTabsContainer) return;
+    
+    chartTabsContainer.innerHTML = "";
+    
+    // Add Master System tab
+    const masterActive = activeDomainId === "all" ? "active" : "";
+    const masterBtn = document.createElement("button");
+    masterBtn.className = `tab-btn ${masterActive}`;
+    masterBtn.setAttribute("data-id", "all");
+    masterBtn.textContent = "Master System";
+    masterBtn.addEventListener("click", () => selectDomain("all"));
+    chartTabsContainer.appendChild(masterBtn);
+    
+    const getShortName = (name) => {
+        if (name.includes("Healthcare")) return "Health";
+        if (name.includes("Environmental")) return "Environment";
+        if (name.includes("Education")) return "Education";
+        if (name.includes("Citizen")) return "Citizen";
+        return name.split(" ")[0];
+    };
+    
+    // Add tab buttons for all domains
+    cachedDomains.forEach(domain => {
+        const active = activeDomainId === domain.id ? "active" : "";
+        const btn = document.createElement("button");
+        btn.className = `tab-btn ${active}`;
+        btn.setAttribute("data-id", domain.id);
+        btn.textContent = getShortName(domain.name);
+        btn.addEventListener("click", () => selectDomain(domain.id));
+        chartTabsContainer.appendChild(btn);
     });
 }
 
@@ -492,6 +528,111 @@ function renderActiveChart() {
         chartRenderArea.appendChild(grid);
         
         drawSafetyDeepChart("safety-deep-chart");
+        
+    } else if (activeDomainId === "health") {
+        const desc = document.createElement("p");
+        desc.className = "deep-dive-desc";
+        desc.textContent = "Evaluating geospatial healthcare resources. Geographic zones 3-North and East represent high-risk medical deserts (>8km to clinics). Ambulances are pre-positioned to optimize ETA.";
+        
+        const grid = document.createElement("div");
+        grid.className = "grid-2-cols-split";
+        
+        const chartCol = document.createElement("div");
+        chartCol.id = "health-deep-chart";
+        grid.appendChild(chartCol);
+        
+        const sideCol = document.createElement("div");
+        sideCol.className = "deep-dive-sidebar";
+        sideCol.innerHTML = `
+            <div class="deep-sidebar-item">
+                <span class="deep-sidebar-label" style="color: var(--clr-emerald)">🏥 Total Clinics</span>
+                <p class="deep-sidebar-text">${cachedMetrics.health.clinics} active municipal facilities</p>
+            </div>
+            <div class="deep-sidebar-item">
+                <span class="deep-sidebar-label" style="color: var(--clr-purple)">🕒 Emergency Dispatch ETA</span>
+                <p class="deep-sidebar-text">Current ambulance response index is ${cachedMetrics.health.ambulance_eta} mins.</p>
+            </div>
+            <div class="deep-sidebar-item">
+                <span class="deep-sidebar-label" style="color: var(--clr-indigo)">🛌 Bed Capacity</span>
+                <p class="deep-sidebar-text">Available beds index is ${cachedMetrics.health.beds} score.</p>
+            </div>
+        `;
+        grid.appendChild(sideCol);
+        
+        chartRenderArea.appendChild(desc);
+        chartRenderArea.appendChild(grid);
+        
+        drawHealthDeepChart("health-deep-chart");
+        
+    } else if (activeDomainId === "environment") {
+        const desc = document.createElement("p");
+        desc.className = "deep-dive-desc";
+        desc.textContent = `Monitoring high-frequency particulate count across key industrial ringways. Air Quality Index currently registers at ${cachedMetrics.aqi.score} (Moderate). Proposed green corridors aim to offset emissions by 40% over 3 years.`;
+        
+        const container = document.createElement("div");
+        container.className = "deep-dive-chart-container";
+        container.id = "environment-deep-chart";
+        
+        chartRenderArea.appendChild(desc);
+        chartRenderArea.appendChild(container);
+        
+        drawEnvironmentDeepChart("environment-deep-chart");
+        
+    } else if (activeDomainId === "energy") {
+        const desc = document.createElement("p");
+        desc.className = "deep-dive-desc";
+        desc.textContent = "Predictive analysis of smart grid peak load and renewable energy supply. Real-time battery bank storage discharge buffers grid stress during evening rush hours.";
+        
+        const container = document.createElement("div");
+        container.className = "deep-dive-chart-container";
+        container.id = "energy-deep-chart";
+        
+        chartRenderArea.appendChild(desc);
+        chartRenderArea.appendChild(container);
+        
+        drawEnergyDeepChart("energy-deep-chart");
+        
+    } else if (activeDomainId === "waste") {
+        const desc = document.createElement("p");
+        desc.className = "deep-dive-desc";
+        desc.textContent = "Smart waste management loops. Optimization of collection routing, sensor-enabled bin fill rate tracking, and regional landfill diversion policies.";
+        
+        const container = document.createElement("div");
+        container.className = "deep-dive-chart-container";
+        container.id = "waste-deep-chart";
+        
+        chartRenderArea.appendChild(desc);
+        chartRenderArea.appendChild(container);
+        
+        drawWasteDeepChart("waste-deep-chart");
+        
+    } else if (activeDomainId === "education") {
+        const desc = document.createElement("p");
+        desc.className = "deep-dive-desc";
+        desc.textContent = "Tracking lifelong learning participation, vocational education attendance, and school resource gap indexes across municipal zones.";
+        
+        const container = document.createElement("div");
+        container.className = "deep-dive-chart-container";
+        container.id = "education-deep-chart";
+        
+        chartRenderArea.appendChild(desc);
+        chartRenderArea.appendChild(container);
+        
+        drawEducationDeepChart("education-deep-chart");
+        
+    } else if (activeDomainId === "citizen") {
+        const desc = document.createElement("p");
+        desc.className = "deep-dive-desc";
+        desc.textContent = "Analyzing public sentiment from municipal feedback channels. Tracking public service response satisfaction scores across different departments.";
+        
+        const container = document.createElement("div");
+        container.className = "deep-dive-chart-container";
+        container.id = "citizen-deep-chart";
+        
+        chartRenderArea.appendChild(desc);
+        chartRenderArea.appendChild(container);
+        
+        drawCitizenDeepChart("citizen-deep-chart");
         
     } else {
         // Fallback placeholder card for other metrics
@@ -878,6 +1019,436 @@ function drawSafetyDeepChart(containerId) {
     `;
 }
 
+function drawHealthDeepChart(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const width = container.clientWidth;
+    const height = 290;
+    
+    const data = [
+        { name: "Mon", wait: 24, score: 72 },
+        { name: "Tue", wait: 21, score: 75 },
+        { name: "Wed", wait: 18, score: 76 },
+        { name: "Thu", wait: 15, score: 79 },
+        { name: "Fri", wait: 22, score: 74 },
+        { name: "Sat", wait: 28, score: 70 },
+        { name: "Sun", wait: 20, score: 76 }
+    ];
+    
+    const paddingX = 35;
+    const paddingY = 30;
+    const scaleX = (width - paddingX * 2) / (data.length - 1);
+    const scaleY = (height - paddingY * 2) / 100;
+    
+    let gridlines = "";
+    for (let i = 0; i <= 4; i++) {
+        const val = i * 25;
+        const cy = height - paddingY - (val * scaleY);
+        gridlines += `<line class="chart-gridline" x1="${paddingX}" y1="${cy}" x2="${width - paddingX}" y2="${cy}" />`;
+        gridlines += `<text class="chart-axis-text" x="${paddingX - 10}" y="${cy + 3}" text-anchor="end">${val}</text>`;
+    }
+    
+    data.forEach((d, i) => {
+        const cx = paddingX + (i * scaleX);
+        gridlines += `<text class="chart-axis-text" x="${cx}" y="${height - paddingY + 16}" text-anchor="middle">${d.name}</text>`;
+    });
+    
+    let waitLine = "";
+    let scoreLine = "";
+    
+    data.forEach((d, i) => {
+        const cx = paddingX + (i * scaleX);
+        const cyWait = height - paddingY - (d.wait * scaleY);
+        const cyScore = height - paddingY - (d.score * scaleY);
+        
+        if (i === 0) {
+            waitLine += `M ${cx} ${cyWait} `;
+            scoreLine += `M ${cx} ${cyScore} `;
+        } else {
+            waitLine += `L ${cx} ${cyWait} `;
+            scoreLine += `L ${cx} ${cyScore} `;
+        }
+    });
+    
+    let interactionNodes = "";
+    data.forEach((d, i) => {
+        const cx = paddingX + (i * scaleX);
+        const cyWait = height - paddingY - (d.wait * scaleY);
+        const cyScore = height - paddingY - (d.score * scaleY);
+        
+        interactionNodes += `
+            <circle class="chart-dot" cx="${cx}" cy="${cyWait}" r="3.5" fill="#fff" stroke="var(--clr-purple)" stroke-width="2" 
+                onmousemove="showTooltip(event, '${d.name}', 'Avg Wait: ${d.wait}m')" onmouseout="hideTooltip()"/>
+            <circle class="chart-dot" cx="${cx}" cy="${cyScore}" r="3.5" fill="#fff" stroke="var(--clr-emerald)" stroke-width="2"
+                onmousemove="showTooltip(event, '${d.name}', 'Access Score: ${d.score}%')" onmouseout="hideTooltip()"/>
+        `;
+    });
+    
+    container.innerHTML = `
+        <svg class="chart-svg" width="100%" height="290">
+            ${gridlines}
+            <path class="chart-line" d="${waitLine}" stroke="var(--clr-purple)" stroke-width="2.5"></path>
+            <path class="chart-line" d="${scoreLine}" stroke="var(--clr-emerald)" stroke-width="2.5"></path>
+            ${interactionNodes}
+        </svg>
+    `;
+}
+
+function drawEnvironmentDeepChart(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const width = container.clientWidth;
+    const height = 280;
+    
+    const basePm25 = cachedMetrics.aqi.pm25;
+    const basePm10 = cachedMetrics.aqi.pm10;
+    const baseNo2 = cachedMetrics.aqi.no2;
+    
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const pm25 = [basePm25 + 5, basePm25, basePm25 - 8, basePm25 - 2, basePm25 + 12, basePm25 + 1, basePm25 - 4];
+    const pm10 = [basePm10 - 2, basePm10, basePm10 - 5, basePm10 + 2, basePm10 + 8, basePm10 - 3, basePm10 - 6];
+    const no2 = [baseNo2 + 4, baseNo2, baseNo2 - 6, baseNo2 - 1, baseNo2 + 10, baseNo2, baseNo2 - 3];
+    
+    const paddingX = 35;
+    const paddingY = 30;
+    const scaleX = (width - paddingX * 2) / (days.length - 1);
+    
+    const maxVal = Math.max(...pm25, ...pm10, ...no2, 100);
+    const scaleY = (height - paddingY * 2) / maxVal;
+    
+    let gridlines = "";
+    const gridStep = maxVal / 4;
+    for (let i = 0; i <= 4; i++) {
+        const val = Math.round(i * gridStep);
+        const cy = height - paddingY - (val * scaleY);
+        gridlines += `<line class="chart-gridline" x1="${paddingX}" y1="${cy}" x2="${width - paddingX}" y2="${cy}" />`;
+        gridlines += `<text class="chart-axis-text" x="${paddingX - 10}" y="${cy + 3}" text-anchor="end">${val}</text>`;
+    }
+    
+    days.forEach((day, i) => {
+        const cx = paddingX + (i * scaleX);
+        gridlines += `<text class="chart-axis-text" x="${cx}" y="${height - paddingY + 16}" text-anchor="middle">${day}</text>`;
+    });
+    
+    let pm25Line = "";
+    let pm25Area = `M ${paddingX} ${height - paddingY} `;
+    let pm10Line = "";
+    let pm10Area = `M ${paddingX} ${height - paddingY} `;
+    let no2Line = "";
+    
+    days.forEach((day, i) => {
+        const cx = paddingX + (i * scaleX);
+        const cyPm25 = height - paddingY - (pm25[i] * scaleY);
+        const cyPm10 = height - paddingY - (pm10[i] * scaleY);
+        const cyNo2 = height - paddingY - (no2[i] * scaleY);
+        
+        if (i === 0) {
+            pm25Line += `M ${cx} ${cyPm25} `;
+            pm10Line += `M ${cx} ${cyPm10} `;
+            no2Line += `M ${cx} ${cyNo2} `;
+        } else {
+            pm25Line += `L ${cx} ${cyPm25} `;
+            pm10Line += `L ${cx} ${cyPm10} `;
+            no2Line += `L ${cx} ${cyNo2} `;
+        }
+        pm25Area += `L ${cx} ${cyPm25} `;
+        pm10Area += `L ${cx} ${cyPm10} `;
+    });
+    
+    pm25Area += `L ${paddingX + (6 * scaleX)} ${height - paddingY} Z`;
+    pm10Area += `L ${paddingX + (6 * scaleX)} ${height - paddingY} Z`;
+    
+    let interactionNodes = "";
+    days.forEach((day, i) => {
+        const cx = paddingX + (i * scaleX);
+        const cyPm25 = height - paddingY - (pm25[i] * scaleY);
+        const cyPm10 = height - paddingY - (pm10[i] * scaleY);
+        const cyNo2 = height - paddingY - (no2[i] * scaleY);
+        
+        interactionNodes += `
+            <circle class="chart-dot" cx="${cx}" cy="${cyPm25}" r="3" fill="#fff" stroke="var(--clr-rose)" stroke-width="1.5" 
+                onmousemove="showTooltip(event, '${day}', 'PM2.5: ${pm25[i]} µg/m³')" onmouseout="hideTooltip()"/>
+            <circle class="chart-dot" cx="${cx}" cy="${cyPm10}" r="3" fill="#fff" stroke="var(--clr-amber)" stroke-width="1.5"
+                onmousemove="showTooltip(event, '${day}', 'PM10: ${pm10[i]} µg/m³')" onmouseout="hideTooltip()"/>
+            <circle class="chart-dot" cx="${cx}" cy="${cyNo2}" r="3" fill="#fff" stroke="var(--clr-cyan)" stroke-width="1.5"
+                onmousemove="showTooltip(event, '${day}', 'NO2: ${no2[i]} ppb')" onmouseout="hideTooltip()"/>
+        `;
+    });
+    
+    container.innerHTML = `
+        <svg class="chart-svg" width="100%" height="280">
+            <defs>
+                <linearGradient id="glow-pm25" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stop-color="var(--clr-rose)" stop-opacity="0.15"/>
+                    <stop offset="95%" stop-color="var(--clr-rose)" stop-opacity="0"/>
+                </linearGradient>
+                <linearGradient id="glow-pm10" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stop-color="var(--clr-amber)" stop-opacity="0.15"/>
+                    <stop offset="95%" stop-color="var(--clr-amber)" stop-opacity="0"/>
+                </linearGradient>
+            </defs>
+            ${gridlines}
+            <path class="chart-area" d="${pm25Area}" fill="url(#glow-pm25)"></path>
+            <path class="chart-area" d="${pm10Area}" fill="url(#glow-pm10)"></path>
+            <path class="chart-line" d="${pm25Line}" stroke="var(--clr-rose)"></path>
+            <path class="chart-line" d="${pm10Line}" stroke="var(--clr-amber)"></path>
+            <path class="chart-line" d="${no2Line}" stroke="var(--clr-cyan)"></path>
+            ${interactionNodes}
+        </svg>
+    `;
+}
+
+function drawEnergyDeepChart(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const width = container.clientWidth;
+    const height = 280;
+    
+    const energy = cachedMetrics.energy;
+    const paddingX = 55;
+    const paddingY = 30;
+    const scaleX = (width - paddingX * 2) / (energy.length - 1);
+    
+    const maxVal = 3000;
+    const scaleY = (height - paddingY * 2) / maxVal;
+    
+    let gridlines = "";
+    for (let i = 0; i <= 4; i++) {
+        const val = i * 750;
+        const cy = height - paddingY - (val * scaleY);
+        gridlines += `<line class="chart-gridline" x1="${paddingX}" y1="${cy}" x2="${width - paddingX}" y2="${cy}" />`;
+        gridlines += `<text class="chart-axis-text" x="${paddingX - 10}" y="${cy + 3}" text-anchor="end">${val} MW</text>`;
+    }
+    
+    energy.forEach((val, i) => {
+        const cx = paddingX + (i * scaleX);
+        gridlines += `<text class="chart-axis-text" x="${cx}" y="${height - paddingY + 16}" text-anchor="middle">${i + 8} AM</text>`;
+    });
+    
+    let demandLine = "";
+    let solarLine = "";
+    
+    energy.forEach((val, i) => {
+        const cx = paddingX + (i * scaleX);
+        const demand = val * 20 + 1000;
+        const isSun = i > 3 && i < 9;
+        const solarGen = val * (isSun ? 0.65 : 0.15) * 20;
+        
+        const cyD = height - paddingY - (demand * scaleY);
+        const cyS = height - paddingY - (solarGen * scaleY);
+        
+        if (i === 0) {
+            demandLine += `M ${cx} ${cyD} `;
+            solarLine += `M ${cx} ${cyS} `;
+        } else {
+            demandLine += `L ${cx} ${cyD} `;
+            solarLine += `L ${cx} ${cyS} `;
+        }
+    });
+    
+    let interactionNodes = "";
+    energy.forEach((val, i) => {
+        const cx = paddingX + (i * scaleX);
+        const demand = val * 20 + 1000;
+        const isSun = i > 3 && i < 9;
+        const solarGen = Math.round(val * (isSun ? 0.65 : 0.15) * 20);
+        
+        const cyD = height - paddingY - (demand * scaleY);
+        const cyS = height - paddingY - (solarGen * scaleY);
+        
+        interactionNodes += `
+            <circle class="chart-dot" cx="${cx}" cy="${cyD}" r="3.5" fill="#fff" stroke="var(--clr-amber)" stroke-width="2" 
+                onmousemove="showTooltip(event, '${i + 8} AM', 'Demand: ${demand} MW')" onmouseout="hideTooltip()"/>
+            <circle class="chart-dot" cx="${cx}" cy="${cyS}" r="3.5" fill="#fff" stroke="var(--clr-emerald)" stroke-width="2"
+                onmousemove="showTooltip(event, '${i + 8} AM', 'Solar Gen: ${solarGen} MW')" onmouseout="hideTooltip()"/>
+        `;
+    });
+    
+    container.innerHTML = `
+        <svg class="chart-svg" width="100%" height="280">
+            ${gridlines}
+            <path class="chart-line" d="${demandLine}" stroke="var(--clr-amber)" stroke-width="2.5"></path>
+            <path class="chart-line" d="${solarLine}" stroke="var(--clr-emerald)" stroke-width="2.5"></path>
+            ${interactionNodes}
+        </svg>
+    `;
+}
+
+function drawWasteDeepChart(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const width = container.clientWidth;
+    const height = 280;
+    
+    const sectors = [
+        { name: "North", val: cachedMetrics.waste[0] || 62 },
+        { name: "South", val: cachedMetrics.waste[1] || 74 },
+        { name: "East", val: cachedMetrics.waste[2] || 58 },
+        { name: "West", val: cachedMetrics.waste[3] || 69 },
+        { name: "Central", val: cachedMetrics.waste[4] || 81 },
+        { name: "Metro", val: cachedMetrics.waste[5] || 65 },
+        { name: "Suburbs", val: cachedMetrics.waste[6] || 55 }
+    ];
+    
+    const paddingX = 40;
+    const paddingY = 30;
+    const barCount = sectors.length;
+    const barWidth = ((width - paddingX * 2) / barCount) - 16;
+    const scaleY = (height - paddingY * 2) / 100;
+    
+    let gridlines = "";
+    for (let i = 0; i <= 4; i++) {
+        const val = i * 25;
+        const cy = height - paddingY - (val * scaleY);
+        gridlines += `<line class="chart-gridline" x1="${paddingX}" y1="${cy}" x2="${width - paddingX}" y2="${cy}" />`;
+        gridlines += `<text class="chart-axis-text" x="${paddingX - 10}" y="${cy + 3}" text-anchor="end">${val}%</text>`;
+    }
+    
+    let barsContent = "";
+    sectors.forEach((s, idx) => {
+        const cx = paddingX + 8 + (idx * ((width - paddingX * 2) / barCount));
+        
+        const recHeight = s.val * scaleY;
+        const recY = height - paddingY - recHeight;
+        
+        const landVal = 100 - s.val;
+        const landHeight = landVal * scaleY;
+        const landY = height - paddingY - landHeight;
+        
+        barsContent += `
+            <rect class="chart-bar" x="${cx}" y="${recY}" width="${barWidth/2}" height="${recHeight}" fill="var(--clr-cyan)" rx="2" 
+                onmousemove="showTooltip(event, '${s.name} Sector', 'Recycling: ${s.val}%')" onmouseout="hideTooltip()"/>
+            <rect class="chart-bar" x="${cx + (barWidth/2) + 2}" y="${landY}" width="${barWidth/2}" height="${landHeight}" fill="var(--clr-rose)" rx="2"
+                onmousemove="showTooltip(event, '${s.name} Sector', 'Landfill: ${landVal}%')" onmouseout="hideTooltip()"/>
+            <text class="chart-axis-text" x="${cx + (barWidth/2)}" y="${height - paddingY + 16}" text-anchor="middle">${s.name}</text>
+        `;
+    });
+    
+    container.innerHTML = `
+        <svg class="chart-svg" width="100%" height="280">
+            ${gridlines}
+            ${barsContent}
+        </svg>
+    `;
+}
+
+function drawEducationDeepChart(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const width = container.clientWidth;
+    const height = 280;
+    
+    const data = [
+        { zone: "Zone A", completion: 82, attendance: 75 },
+        { zone: "Zone B", completion: 88, attendance: 82 },
+        { zone: "Zone C", completion: 64, attendance: 60 },
+        { zone: "Zone D", completion: 78, attendance: 70 },
+        { zone: "Zone E", completion: 94, attendance: 88 },
+        { zone: "Zone F", completion: 80, attendance: 78 }
+    ];
+    
+    const paddingX = 40;
+    const paddingY = 30;
+    const barCount = data.length;
+    const barWidth = ((width - paddingX * 2) / barCount) - 16;
+    const scaleY = (height - paddingY * 2) / 100;
+    
+    let gridlines = "";
+    for (let i = 0; i <= 4; i++) {
+        const val = i * 25;
+        const cy = height - paddingY - (val * scaleY);
+        gridlines += `<line class="chart-gridline" x1="${paddingX}" y1="${cy}" x2="${width - paddingX}" y2="${cy}" />`;
+        gridlines += `<text class="chart-axis-text" x="${paddingX - 10}" y="${cy + 3}" text-anchor="end">${val}%</text>`;
+    }
+    
+    let barsContent = "";
+    data.forEach((d, idx) => {
+        const cx = paddingX + 8 + (idx * ((width - paddingX * 2) / barCount));
+        
+        const compHeight = d.completion * scaleY;
+        const compY = height - paddingY - compHeight;
+        
+        const attHeight = d.attendance * scaleY;
+        const attY = height - paddingY - attHeight;
+        
+        barsContent += `
+            <rect class="chart-bar" x="${cx}" y="${compY}" width="${barWidth/2}" height="${compHeight}" fill="var(--clr-amber)" rx="2" 
+                onmousemove="showTooltip(event, '${d.zone}', 'Completion Rate: ${d.completion}%')" onmouseout="hideTooltip()"/>
+            <rect class="chart-bar" x="${cx + (barWidth/2) + 2}" y="${attY}" width="${barWidth/2}" height="${attHeight}" fill="var(--clr-indigo)" rx="2"
+                onmousemove="showTooltip(event, '${d.zone}', 'Vocational Attendance: ${d.attendance}%')" onmouseout="hideTooltip()"/>
+            <text class="chart-axis-text" x="${cx + (barWidth/2)}" y="${height - paddingY + 16}" text-anchor="middle">${d.zone}</text>
+        `;
+    });
+    
+    container.innerHTML = `
+        <svg class="chart-svg" width="100%" height="280">
+            ${gridlines}
+            ${barsContent}
+        </svg>
+    `;
+}
+
+function drawCitizenDeepChart(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const width = container.clientWidth;
+    const height = 280;
+    
+    const departments = [
+        { name: "Transit", rating: 4.1, eta: 12 },
+        { name: "Safety", rating: 3.8, eta: 7 },
+        { name: "Health", rating: 4.4, eta: 18 },
+        { name: "Energy", rating: 4.3, eta: 15 },
+        { name: "Waste", rating: 3.9, eta: 22 },
+        { name: "Citizen", rating: 4.2, eta: 10 }
+    ];
+    
+    const paddingX = 40;
+    const paddingY = 30;
+    const barCount = departments.length;
+    const barWidth = ((width - paddingX * 2) / barCount) - 16;
+    const scaleY = (height - paddingY * 2) / 5;
+    
+    let gridlines = "";
+    for (let i = 0; i <= 5; i++) {
+        const cy = height - paddingY - (i * scaleY);
+        gridlines += `<line class="chart-gridline" x1="${paddingX}" y1="${cy}" x2="${width - paddingX}" y2="${cy}" />`;
+        gridlines += `<text class="chart-axis-text" x="${paddingX - 10}" y="${cy + 3}" text-anchor="end">${i}.0 ⭐</text>`;
+    }
+    
+    let barsContent = "";
+    departments.forEach((d, idx) => {
+        const cx = paddingX + 8 + (idx * ((width - paddingX * 2) / barCount));
+        
+        const ratHeight = d.rating * scaleY;
+        const ratY = height - paddingY - ratHeight;
+        
+        const etaHeight = (d.eta / 25) * (height - paddingY * 2);
+        const etaY = height - paddingY - etaHeight;
+        
+        barsContent += `
+            <rect class="chart-bar" x="${cx}" width="${barWidth}" height="${ratHeight}" y="${ratY}" fill="var(--clr-cyan)" rx="2" 
+                onmousemove="showTooltip(event, '${d.name} Dept', 'Satisfaction: ${d.rating}/5.0 ⭐')" onmouseout="hideTooltip()"/>
+            <circle class="chart-dot" cx="${cx + barWidth/2}" cy="${etaY}" r="4" fill="#fff" stroke="var(--clr-rose)" stroke-width="2.5"
+                onmousemove="showTooltip(event, '${d.name} Dept', 'Average Response: ${d.eta} mins')" onmouseout="hideTooltip()"/>
+            <text class="chart-axis-text" x="${cx + (barWidth/2)}" y="${height - paddingY + 16}" text-anchor="middle">${d.name}</text>
+        `;
+    });
+    
+    container.innerHTML = `
+        <svg class="chart-svg" width="100%" height="280">
+            ${gridlines}
+            ${barsContent}
+        </svg>
+    `;
+}
+
 // Global Tooltip Management
 function showTooltip(event, title, content) {
     tooltipEl.style.display = "block";
@@ -1023,14 +1594,6 @@ function initChatSuggestions() {
 function setupEvents() {
     // Recalculate Btn
     recalculateBtn.addEventListener("click", () => fetchData(true));
-    
-    // Tab filtering btns
-    const tabBtns = chartTabsContainer.querySelectorAll(".tab-btn");
-    tabBtns.forEach(btn => {
-        btn.addEventListener("click", () => {
-            selectDomain(btn.getAttribute("data-id"));
-        });
-    });
     
     // Chat Submit Form
     chatInputForm.addEventListener("submit", (e) => {
