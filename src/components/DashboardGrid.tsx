@@ -13,7 +13,8 @@ import {
   Line,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  ComposedChart
 } from "recharts";
 import { 
   Activity, 
@@ -192,19 +193,28 @@ export default function DashboardGrid({ metrics, activeDomainId, domains, onSele
             >
               Master System
             </button>
-            {domains.slice(0, 4).map((d) => (
-              <button
-                key={d.id}
-                onClick={() => onSelectDomain(d.id)}
-                className={`px-2.5 py-1 rounded-md text-[10px] font-mono uppercase transition-colors duration-200 border ${
-                  activeDomainId === d.id
-                    ? "bg-slate-950 border-cyan-800 text-cyan-400"
-                    : "bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                {d.name.split(" ")[0]}
-              </button>
-            ))}
+            {domains.map((d) => {
+              const getShortName = (name: string) => {
+                if (name.includes("Healthcare")) return "Health";
+                if (name.includes("Environmental")) return "Environment";
+                if (name.includes("Education")) return "Education";
+                if (name.includes("Citizen")) return "Citizen";
+                return name.split(" ")[0];
+              };
+              return (
+                <button
+                  key={d.id}
+                  onClick={() => onSelectDomain(d.id)}
+                  className={`px-2.5 py-1 rounded-md text-[10px] font-mono uppercase transition-colors duration-200 border ${
+                    activeDomainId === d.id
+                      ? "bg-slate-950 border-cyan-800 text-cyan-400"
+                      : "bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  {getShortName(d.name)}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -513,6 +523,104 @@ export default function DashboardGrid({ metrics, activeDomainId, domains, onSele
                   <Area type="monotone" name="PM10 (µg/m³)" dataKey="PM10" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorPM10)" />
                   <Line type="monotone" name="NO₂ (ppb)" dataKey="NO2" stroke="#3b82f6" strokeWidth={2.5} dot={false} />
                 </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* Energy Deep-dive */}
+        {activeDomainId === "energy" && (
+          <div className="space-y-4">
+            <p className="text-xs text-slate-400 leading-relaxed font-sans max-w-4xl">
+              Predictive analysis of smart grid peak load and renewable energy supply. Real-time battery bank storage discharge buffers grid stress during evening rush hours.
+            </p>
+            <div className="h-[280px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={energyData}>
+                  <XAxis dataKey="time" stroke="#475569" fontSize={10} tickLine={false} />
+                  <YAxis stroke="#475569" fontSize={10} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
+                  <Area type="monotone" name="Grid Demand (MW)" dataKey="Grid Demand (MW)" stroke="#f59e0b" strokeWidth={2} fillOpacity={0.15} fill="#f59e0b" />
+                  <Area type="monotone" name="Solar Generation (MW)" dataKey="Solar Generation (MW)" stroke="#10b981" strokeWidth={2} fillOpacity={0.15} fill="#10b981" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* Waste Deep-dive */}
+        {activeDomainId === "waste" && (
+          <div className="space-y-4">
+            <p className="text-xs text-slate-400 leading-relaxed font-sans max-w-4xl">
+              Smart waste management loops. Optimization of collection routing, sensor-enabled bin fill rate tracking, and regional landfill diversion policies.
+            </p>
+            <div className="h-[280px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={wasteData}>
+                  <XAxis dataKey="sector" stroke="#475569" fontSize={10} tickLine={false} />
+                  <YAxis stroke="#475569" fontSize={10} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
+                  <Bar name="Recycled %" dataKey="Recycled %" fill="#06b6d4" radius={[2, 2, 0, 0]} />
+                  <Bar name="Landfill %" dataKey="Landfill %" fill="#f43f5e" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* Education Deep-dive */}
+        {activeDomainId === "education" && (
+          <div className="space-y-4">
+            <p className="text-xs text-slate-400 leading-relaxed font-sans max-w-4xl">
+              Tracking lifelong learning participation, vocational education attendance, and school resource gap indexes across municipal zones.
+            </p>
+            <div className="h-[280px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={[
+                  { zone: "Zone A", completion: 82, attendance: 75 },
+                  { zone: "Zone B", completion: 88, attendance: 82 },
+                  { zone: "Zone C", completion: 64, attendance: 60 },
+                  { zone: "Zone D", completion: 78, attendance: 70 },
+                  { zone: "Zone E", completion: 94, attendance: 88 },
+                  { zone: "Zone F", completion: 80, attendance: 78 }
+                ]}>
+                  <XAxis dataKey="zone" stroke="#475569" fontSize={10} tickLine={false} />
+                  <YAxis stroke="#475569" fontSize={10} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
+                  <Bar name="Completion Rate %" dataKey="completion" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+                  <Bar name="Vocational Attendance %" dataKey="attendance" fill="#6366f1" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* Citizen Deep-dive */}
+        {activeDomainId === "citizen" && (
+          <div className="space-y-4">
+            <p className="text-xs text-slate-400 leading-relaxed font-sans max-w-4xl">
+              Analyzing public sentiment from municipal feedback channels. Tracking public service response satisfaction scores across different departments.
+            </p>
+            <div className="h-[280px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={[
+                  { name: "Transit", rating: 4.1, eta: 12 },
+                  { name: "Safety", rating: 3.8, eta: 7 },
+                  { name: "Health", rating: 4.4, eta: 18 },
+                  { name: "Energy", rating: 4.3, eta: 15 },
+                  { name: "Waste", rating: 3.9, eta: 22 },
+                  { name: "Citizen", rating: 4.2, eta: 10 }
+                ]}>
+                  <XAxis dataKey="name" stroke="#475569" fontSize={10} tickLine={false} />
+                  <YAxis stroke="#475569" fontSize={10} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
+                  <Bar name="Satisfaction Score ⭐ (out of 5)" dataKey="rating" fill="#06b6d4" radius={[2, 2, 0, 0]} />
+                  <Line name="Avg Response ETA (mins)" type="monotone" dataKey="eta" stroke="#f43f5e" strokeWidth={2.5} dot={true} />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>
