@@ -28,6 +28,7 @@ export default function App() {
   const [longitude, setLongitude] = useState<number | null>(null);
   const [liveClock, setLiveClock] = useState<string>("");
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [showGpsMenu, setShowGpsMenu] = useState<boolean>(false);
   
   // Simulation states
   const [deployingId, setDeployingId] = useState<number | null>(null);
@@ -147,14 +148,123 @@ export default function App() {
               <span>TIME: <strong className="text-slate-200">{liveClock || "SYNCING..."}</strong></span>
             </div>
 
-            <div className="flex items-center gap-1.5 bg-slate-950/60 px-3 py-1.5 rounded-lg border border-slate-800">
-              <MapPin className="w-3.5 h-3.5 text-rose-500" />
-              <span>
-                GPS:{" "}
-                <strong className="text-slate-200">
-                  {latitude ? `${latitude.toFixed(4)}, ${longitude?.toFixed(4)}` : "DEFAULT CENTRAL"}
-                </strong>
-              </span>
+            <div className="relative">
+              <button
+                onClick={() => setShowGpsMenu(!showGpsMenu)}
+                className="flex items-center gap-1.5 bg-slate-950/60 px-3 py-1.5 rounded-lg border border-slate-800 hover:border-cyan-600 transition-colors text-left"
+              >
+                <MapPin className="w-3.5 h-3.5 text-rose-500" />
+                <span>
+                  GPS:{" "}
+                  <strong className="text-slate-200 font-mono">
+                    {latitude ? `${latitude.toFixed(4)}, ${longitude?.toFixed(4)}` : "DEFAULT CENTRAL"}
+                  </strong>
+                </span>
+              </button>
+
+              {showGpsMenu && (
+                <div className="absolute right-0 mt-2 w-64 bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-2xl z-50 space-y-3 backdrop-blur-md bg-opacity-95">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <span className="font-sans font-bold text-xs text-slate-200">Simulate Location</span>
+                    <button 
+                      onClick={() => setShowGpsMenu(false)}
+                      className="text-slate-500 hover:text-slate-300 text-xs font-bold"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  {/* Preset Locations */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider block">Presets</span>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        onClick={() => {
+                          setLatitude(12.9716);
+                          setLongitude(77.5946);
+                          setShowGpsMenu(false);
+                        }}
+                        className="px-2 py-1 bg-slate-950 hover:bg-cyan-950 hover:text-cyan-400 border border-slate-800 rounded text-[10px] text-left transition-all"
+                      >
+                        🇮🇳 Bengaluru
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLatitude(40.7128);
+                          setLongitude(-74.0060);
+                          setShowGpsMenu(false);
+                        }}
+                        className="px-2 py-1 bg-slate-950 hover:bg-cyan-950 hover:text-cyan-400 border border-slate-800 rounded text-[10px] text-left transition-all"
+                      >
+                        🇺🇸 New York
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLatitude(51.5074);
+                          setLongitude(-0.1278);
+                          setShowGpsMenu(false);
+                        }}
+                        className="px-2 py-1 bg-slate-950 hover:bg-cyan-950 hover:text-cyan-400 border border-slate-800 rounded text-[10px] text-left transition-all"
+                      >
+                        🇬🇧 London
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLatitude(35.6762);
+                          setLongitude(139.6503);
+                          setShowGpsMenu(false);
+                        }}
+                        className="px-2 py-1 bg-slate-950 hover:bg-cyan-950 hover:text-cyan-400 border border-slate-800 rounded text-[10px] text-left transition-all"
+                      >
+                        🇯🇵 Tokyo
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLatitude(-33.8688);
+                          setLongitude(151.2093);
+                          setShowGpsMenu(false);
+                        }}
+                        className="px-2 py-1 bg-slate-950 hover:bg-cyan-950 hover:text-cyan-400 border border-slate-800 rounded text-[10px] text-left transition-all col-span-2"
+                      >
+                        🇦🇺 Sydney
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Manual Inputs */}
+                  <div className="space-y-2 pt-1 border-t border-slate-800">
+                    <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider block">Custom Coordinates</span>
+                    <div className="flex gap-2">
+                      <div className="flex-1 space-y-1">
+                        <label className="text-[9px] font-mono text-slate-400">Lat</label>
+                        <input
+                          type="number"
+                          step="0.0001"
+                          value={latitude || 12.9716}
+                          onChange={(e) => setLatitude(Number(e.target.value))}
+                          className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] font-mono text-slate-200 focus:outline-none focus:border-cyan-600"
+                        />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <label className="text-[9px] font-mono text-slate-400">Lng</label>
+                        <input
+                          type="number"
+                          step="0.0001"
+                          value={longitude || 77.5946}
+                          onChange={(e) => setLongitude(Number(e.target.value))}
+                          className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] font-mono text-slate-200 focus:outline-none focus:border-cyan-600"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowGpsMenu(false)}
+                      className="w-full py-1.5 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-sans font-bold text-xs rounded transition-colors"
+                    >
+                      Apply Coordinates
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <button
