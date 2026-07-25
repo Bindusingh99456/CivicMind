@@ -107,7 +107,7 @@ def get_fallback_response(message, lat, lng):
             f"3. **Compute Central Angle $c$**:\n"
             f"   - $c = 2 \\arctan2\\left(\\sqrt{{a}}, \\sqrt{{1-a}}\\right) \\approx {c_val:.4e} \\text{{ rad}}$\n"
             f"4. **Compute Distance $d$**:\n"
-            f"   - $d = 6371.0 \\text{{ km}} \\times c = \\mathbf{{{dist}} \\text{{ km}}}}$\n\n"
+            f"   - $d = 6371.0 \\text{{ km}} \\times c = \\mathbf{{{dist} \\text{{ km}}}}$\n\n"
             f"#### 3. Verification Report\n"
             f"- **Local Registry Node ID**: `REG-MUNICIPAL-04`\n"
             f"- **Calculated Distance**: **`{dist} km`**\n"
@@ -148,7 +148,7 @@ def get_fallback_response(message, lat, lng):
             f"- Baseload Adjusted = $1850 \\times {t_factor:.3f} = {baseload_adjusted:.2f}\\text{{ MW}}$\n"
             f"- Line Loss = ${baseload_adjusted:.2f} \\times 0.045 = {line_loss:.2f}\\text{{ MW}}$\n"
             f"- Solar Offset (at peak hour 19:00) = $0\\text{{ MW}}$\n"
-            f"- **Projected Peak Demand** = ${baseload_adjusted:.2f} + {active_ev} + {line_loss:.2f} - 0 = \\mathbf{{{projected_demand:.2f}}\\text{{ MW}}}}$$\n"
+            f"- **Projected Peak Demand** = ${baseload_adjusted:.2f} + {active_ev} + {line_loss:.2f} - 0 = \\mathbf{{{projected_demand:.2f} \\text{{ MW}}}}$$\n"
         )
         
     # 3. Critique waste management infrastructure / Civic Planner Persona
