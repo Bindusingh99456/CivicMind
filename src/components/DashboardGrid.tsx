@@ -329,7 +329,7 @@ export default function DashboardGrid({ metrics, activeDomainId, domains, onSele
                 </span>
                 <span className="text-[10px] font-mono text-purple-400">Zone-Specific Matrix</span>
               </div>
-              <div className="grid grid-cols-14 gap-1 p-1 bg-slate-950/80 rounded-lg max-h-[140px] overflow-hidden">
+              <div className="grid gap-1 p-1 bg-slate-950/80 rounded-lg max-h-[140px] overflow-hidden" style={{ gridTemplateColumns: "repeat(14, minmax(0, 1fr))" }}>
                 {metrics.heatmap.map((cell, i) => (
                   <div
                     key={i}

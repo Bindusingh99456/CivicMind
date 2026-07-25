@@ -65,55 +65,140 @@ async function startServer() {
     { type: "warn", domain: "Waste", text: "Landfill Site B approaching 85% capacity. Diversion of 40% waste volume to Site A recommended within 10 days.", confidence: 93 },
   ];
 
+  // Helper to get location-specific stats
+  const getLocationStats = (lat: number, lng: number) => {
+    const isClose = (val1: number, val2: number) => Math.abs(val1 - val2) < 0.01;
+    
+    if (isClose(lat, 12.9716) && isClose(lng, 77.5946)) {
+      return { name: "Bengaluru", temp: 28, aqi: 92, traffic: 85, metro: 60, energyPeak: 2950 };
+    } else if (isClose(lat, 40.7128) && isClose(lng, -74.0060)) {
+      return { name: "New York", temp: 22, aqi: 54, traffic: 72, metro: 88, energyPeak: 4100 };
+    } else if (isClose(lat, 51.5074) && isClose(lng, -0.1278)) {
+      return { name: "London", temp: 16, aqi: 42, traffic: 65, metro: 82, energyPeak: 3200 };
+    } else if (isClose(lat, 35.6762) && isClose(lng, 139.6503)) {
+      return { name: "Tokyo", temp: 19, aqi: 48, traffic: 58, metro: 95, energyPeak: 4800 };
+    } else if (isClose(lat, -33.8688) && isClose(lng, 151.2093)) {
+      return { name: "Sydney", temp: 21, aqi: 28, traffic: 60, metro: 70, energyPeak: 2400 };
+    }
+    
+    // Deterministic fallback generator
+    const seed = Math.abs(Math.sin(lat) * Math.cos(lng));
+    const temp = Math.max(-10, Math.min(45, Math.round(35 - Math.abs(lat) * 0.5)));
+    const aqi = Math.floor(20 + seed * 130);
+    const traffic = Math.floor(40 + seed * 50);
+    const metro = Math.floor(30 + seed * 60);
+    const energyPeak = Math.floor(1500 + seed * 3000);
+    return { name: "Custom Sector", temp, aqi, traffic, metro, energyPeak };
+  };
+
   // API Routes
   app.get("/api/domains", (req, res) => {
     res.json(DOMAINS);
   });
 
   app.get("/api/predictions", (req, res) => {
-    const predictions = PREDICTIONS_TEMPLATE.map(p => ({
-      ...p,
-      confidence: Math.max(70, Math.min(99, p.confidence + Math.floor(Math.random() * 7) - 3))
-    }));
+    const latitude = req.query.latitude;
+    const longitude = req.query.longitude;
+    const lat = latitude !== undefined && latitude !== null ? Number(latitude) : 12.9716;
+    const lng = longitude !== undefined && longitude !== null ? Number(longitude) : 77.5946;
+    const stats = getLocationStats(lat, lng);
+
+    const predictions = PREDICTIONS_TEMPLATE.map(p => {
+      let text = p.text;
+      let confidence = p.confidence;
+      if (p.domain === "Transportation") {
+        text = `Bus route 42 projected to face ${stats.traffic}% capacity overload next Tuesday in the ${stats.name} sector. Recommend deploying additional vehicles.`;
+        confidence = Math.max(70, Math.min(99, stats.traffic + 5));
+      } else if (p.domain === "Energy") {
+        const peakGW = (stats.energyPeak / 1000).toFixed(1);
+        text = `Demand forecast is approaching peak load of ${peakGW} GW this weekend. Suggest enabling battery storage grid offset.`;
+        confidence = 94;
+      }
+      return {
+        ...p,
+        text,
+        confidence: Math.max(70, Math.min(99, confidence + Math.floor(Math.random() * 5) - 2))
+      };
+    });
     res.json(predictions);
   });
 
   app.get("/api/insights", (req, res) => {
-    res.json(INSIGHTS);
+    const latitude = req.query.latitude;
+    const longitude = req.query.longitude;
+    const lat = latitude !== undefined && latitude !== null ? Number(latitude) : 12.9716;
+    const lng = longitude !== undefined && longitude !== null ? Number(longitude) : 77.5946;
+    const stats = getLocationStats(lat, lng);
+
+    const insights = INSIGHTS.map(ins => {
+      let body = ins.body;
+      if (ins.category === "Transportation") {
+        body = `AI analysis of ridership data in ${stats.name} reveals underperforming corridors. Rebalancing fleet allocation could improve transit efficiency by ${stats.traffic - 10}%.`;
+      }
+      return { ...ins, body };
+    });
+    res.json(insights);
   });
 
   app.get("/api/metrics", (req, res) => {
+    const latitude = req.query.latitude;
+    const longitude = req.query.longitude;
+    const lat = latitude !== undefined && latitude !== null ? Number(latitude) : 12.9716;
+    const lng = longitude !== undefined && longitude !== null ? Number(longitude) : 77.5946;
+    const stats = getLocationStats(lat, lng);
+
     const randomArray = (length: number, min: number, max: number) => {
       return Array.from({ length }, () => Math.floor(Math.random() * (max - min + 1)) + min);
     };
 
+    const dynamicArray = (length: number, baseVal: number, range: number) => {
+      return Array.from({ length }, () => Math.max(10, Math.min(99, Math.floor(baseVal + (Math.random() * range * 2 - range)))));
+    };
+
     res.json({
       aqi: {
-        score: Math.floor(Math.random() * 21) + 75,
-        pm25: Math.floor(Math.random() * 21) + 55,
-        pm10: Math.floor(Math.random() * 21) + 35,
-        no2: Math.floor(Math.random() * 16) + 30,
-        o3: Math.floor(Math.random() * 16) + 65
+        score: stats.aqi,
+        pm25: Math.round(stats.aqi * 0.7),
+        pm10: Math.round(stats.aqi * 0.5),
+        no2: Math.round(stats.aqi * 0.4),
+        o3: Math.round(stats.aqi * 0.8)
       },
-      energy: randomArray(12, 45, 95),
+      energy: Array.from({ length: 12 }, (_, i) => {
+        const hour = i + 8;
+        const isPeak = hour === 18 || hour === 19 || hour === 12 || hour === 13;
+        const multiplier = isPeak ? 0.95 : 0.7;
+        const val = Math.round((stats.energyPeak * multiplier) / 20);
+        return Math.max(10, Math.min(99, val));
+      }),
       mobility: {
-        bus: randomArray(24, 40, 90),
-        metro: randomArray(24, 30, 70),
-        traffic: randomArray(24, 20, 80)
+        bus: dynamicArray(24, stats.metro * 0.8, 8),
+        metro: dynamicArray(24, stats.metro, 10),
+        traffic: Array.from({ length: 24 }, (_, i) => {
+          const isPeak = (i >= 8 && i <= 10) || (i >= 17 && i <= 19);
+          const base = isPeak ? stats.traffic : stats.traffic * 0.5;
+          return Math.round(Math.min(99, base + Math.random() * 10 - 5));
+        })
       },
       health: {
-        score: Math.floor(Math.random() * 11) + 72,
+        score: Math.max(50, Math.min(99, Math.round(100 - stats.aqi * 0.2 - stats.traffic * 0.2))),
         beds: parseFloat((Math.random() * 0.5 + 4.0).toFixed(1)),
         wait_time: Math.floor(Math.random() * 8) + 15,
         ambulance_eta: parseFloat((Math.random() * 1.4 + 6.8).toFixed(1)),
         clinics: Math.floor(Math.random() * 8) + 138
       },
       waste: randomArray(7, 40, 95),
-      heatmap: Array.from({ length: 98 }, (_, i) => ({
-        zone: i + 1,
-        value: Math.random(),
-        status: ["low", "med", "high", "crit"][Math.floor(Math.random() * 4)]
-      }))
+      heatmap: Array.from({ length: 98 }, (_, i) => {
+        const val = Math.random();
+        let status = "low";
+        if (val > 0.85) status = "crit";
+        else if (val > 0.65) status = "high";
+        else if (val > 0.35) status = "med";
+        return {
+          zone: i + 1,
+          value: val,
+          status: status
+        };
+      })
     });
   });
 
@@ -509,15 +594,26 @@ async function startServer() {
     if (ai) {
       try {
         const systemInstruction = (
-          "You are CivicMind AI, a decision intelligence platform for smart cities. " +
-          "Analyze requests related to city operations (transportation, energy, environment, safety, healthcare, waste, etc.). " +
-          "Provide detailed, structured data analysis, specific policy recommendations, and confidence metrics where appropriate. " +
-          `The user is located at latitude ${lat}, longitude ${lng}. If they ask for nearby hospitals or services, use these coordinates to construct a helpful response. ` +
-          "Use elegant markdown formatting including bold text, lists, and markdown tables if showing structured data comparisons."
+          "You are CivicMind AI, a premium decision intelligence platform for smart cities and urban planning.\n\n" +
+          "Your goal is to provide high-fidelity, professional analytical reports on city operations including:\n" +
+          "- Urban Mobility (transit, congestion, routing, priority signalling)\n" +
+          "- Smart Grid Energy & Utilities (peak load forecasts, solar/wind offsets, battery dispatch)\n" +
+          "- Public Safety & Emergency Services (ETAs, patrols, incident detection)\n" +
+          "- Environmental Health (AQI metrics, PM2.5/PM10 levels, mitigation policies)\n" +
+          "- Healthcare & Hospital Access (geospatial mapping, bed counts, wait times)\n" +
+          "- Smart Waste Management (collection routes, source segregation, landfill capacity)\n\n" +
+          `The user's current coordinates are latitude ${lat.toFixed(4)}, longitude ${lng.toFixed(4)}. When requested to find nearby resources (such as hospitals or services) or analyze the local area, always calculate distances from these coordinates using the Haversine formula and present them in a clean markdown table.\n\n` +
+          "Formatting guidelines:\n" +
+          "1. Start with a header incorporating a relevant emoji (e.g., ### 🚦 GIS Decision Engine).\n" +
+          "2. Always show the coordinates you are using for the analysis.\n" +
+          "3. When answering questions about forecasts, grid demands, or spatial models, include a formal mathematical equation in LaTeX (e.g., using $$) and show a step-by-step calculation.\n" +
+          "4. Present comparative stats or lists of services in structured markdown tables (e.g., Name, Distance, Available Capacity, Specialty, Rating).\n" +
+          "5. Conclude with a clear 'Strategic Policy Recommendations' section and an analytical 'Confidence Score: XX% | Model: [ModelName]'.\n" +
+          "6. Maintain a highly professional, academic, yet actionable tone suitable for city planners and municipal directors."
         );
 
         const response = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
+          model: "gemini-2.5-flash",
           contents: message,
           config: {
             systemInstruction: systemInstruction,

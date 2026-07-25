@@ -57,14 +57,15 @@ export default function App() {
   };
 
   // Fetch telemetry
-  const fetchData = async (isManual = false) => {
+  const fetchData = async (isManual = false, lat: number | null = latitude, lng: number | null = longitude) => {
     if (isManual) setRefreshing(true);
+    const query = lat !== null && lng !== null ? `?latitude=${lat}&longitude=${lng}` : "";
     try {
       const [domainsRes, predictionsRes, insightsRes, metricsRes] = await Promise.all([
-        fetch("/api/domains"),
-        fetch("/api/predictions"),
-        fetch("/api/insights"),
-        fetch("/api/metrics")
+        fetch(`/api/domains${query}`),
+        fetch(`/api/predictions${query}`),
+        fetch(`/api/insights${query}`),
+        fetch(`/api/metrics${query}`)
       ]);
 
       if (domainsRes.ok) setDomains(await domainsRes.json());
@@ -101,6 +102,13 @@ export default function App() {
       clearInterval(metricsInterval);
     };
   }, []);
+
+  // Trigger telemetry fetch when GPS state resolves or changes
+  useEffect(() => {
+    if (latitude !== null && longitude !== null) {
+      fetchData(false, latitude, longitude);
+    }
+  }, [latitude, longitude]);
 
   const handleDeployAction = (index: number) => {
     if (deployingId !== null) return;
@@ -183,6 +191,7 @@ export default function App() {
                           setLatitude(12.9716);
                           setLongitude(77.5946);
                           setShowGpsMenu(false);
+                          fetchData(true, 12.9716, 77.5946);
                         }}
                         className="px-2 py-1 bg-slate-950 hover:bg-cyan-950 hover:text-cyan-400 border border-slate-800 rounded text-[10px] text-left transition-all"
                       >
@@ -193,6 +202,7 @@ export default function App() {
                           setLatitude(40.7128);
                           setLongitude(-74.0060);
                           setShowGpsMenu(false);
+                          fetchData(true, 40.7128, -74.0060);
                         }}
                         className="px-2 py-1 bg-slate-950 hover:bg-cyan-950 hover:text-cyan-400 border border-slate-800 rounded text-[10px] text-left transition-all"
                       >
@@ -203,6 +213,7 @@ export default function App() {
                           setLatitude(51.5074);
                           setLongitude(-0.1278);
                           setShowGpsMenu(false);
+                          fetchData(true, 51.5074, -0.1278);
                         }}
                         className="px-2 py-1 bg-slate-950 hover:bg-cyan-950 hover:text-cyan-400 border border-slate-800 rounded text-[10px] text-left transition-all"
                       >
@@ -213,6 +224,7 @@ export default function App() {
                           setLatitude(35.6762);
                           setLongitude(139.6503);
                           setShowGpsMenu(false);
+                          fetchData(true, 35.6762, 139.6503);
                         }}
                         className="px-2 py-1 bg-slate-950 hover:bg-cyan-950 hover:text-cyan-400 border border-slate-800 rounded text-[10px] text-left transition-all"
                       >
@@ -223,6 +235,7 @@ export default function App() {
                           setLatitude(-33.8688);
                           setLongitude(151.2093);
                           setShowGpsMenu(false);
+                          fetchData(true, -33.8688, 151.2093);
                         }}
                         className="px-2 py-1 bg-slate-950 hover:bg-cyan-950 hover:text-cyan-400 border border-slate-800 rounded text-[10px] text-left transition-all col-span-2"
                       >
@@ -257,7 +270,10 @@ export default function App() {
                       </div>
                     </div>
                     <button
-                      onClick={() => setShowGpsMenu(false)}
+                      onClick={() => {
+                        setShowGpsMenu(false);
+                        fetchData(true, latitude, longitude);
+                      }}
                       className="w-full py-1.5 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-sans font-bold text-xs rounded transition-colors"
                     >
                       Apply Coordinates

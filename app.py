@@ -426,54 +426,132 @@ def get_fallback_response(message, lat, lng):
 def home():
     return render_template("index.html")
 
+def get_location_stats(lat: float, lng: float):
+    def is_close(val1, val2):
+        return abs(val1 - val2) < 0.01
+        
+    if is_close(lat, 12.9716) and is_close(lng, 77.5946):
+        return { "name": "Bengaluru", "temp": 28, "aqi": 92, "traffic": 85, "metro": 60, "energyPeak": 2950 }
+    elif is_close(lat, 40.7128) and is_close(lng, -74.0060):
+        return { "name": "New York", "temp": 22, "aqi": 54, "traffic": 72, "metro": 88, "energyPeak": 4100 }
+    elif is_close(lat, 51.5074) and is_close(lng, -0.1278):
+        return { "name": "London", "temp": 16, "aqi": 42, "traffic": 65, "metro": 82, "energyPeak": 3200 }
+    elif is_close(lat, 35.6762) and is_close(lng, 139.6503):
+        return { "name": "Tokyo", "temp": 19, "aqi": 48, "traffic": 58, "metro": 95, "energyPeak": 4800 }
+    elif is_close(lat, -33.8688) and is_close(lng, 151.2093):
+        return { "name": "Sydney", "temp": 21, "aqi": 28, "traffic": 60, "metro": 70, "energyPeak": 2400 }
+        
+    # Deterministic fallback generator
+    import math
+    seed = abs(math.sin(lat) * math.cos(lng))
+    temp = max(-10, min(45, round(35 - abs(lat) * 0.5)))
+    aqi = int(20 + seed * 130)
+    traffic = int(40 + seed * 50)
+    metro = int(30 + seed * 60)
+    energyPeak = int(1500 + seed * 3000)
+    return { "name": "Custom Sector", "temp": temp, "aqi": aqi, "traffic": traffic, "metro": metro, "energyPeak": energyPeak }
+
 @app.route("/api/domains")
 def get_domains():
     return jsonify(DOMAINS)
 
 @app.route("/api/predictions")
 def get_predictions():
+    latitude = request.args.get("latitude")
+    longitude = request.args.get("longitude")
+    lat = float(latitude) if latitude is not None else 12.9716
+    lng = float(longitude) if longitude is not None else 77.5946
+    stats = get_location_stats(lat, lng)
+
     predictions = []
     for p in PREDICTIONS_TEMPLATE:
         p_copy = dict(p)
-        # Introduce slight random variations
-        p_copy["confidence"] = max(70, min(99, p["confidence"] + random.randint(-3, 3)))
+        text = p["text"]
+        confidence = p["confidence"]
+        if p["domain"] == "Transportation":
+            text = f"Bus route 42 projected to face {stats['traffic']}% capacity overload next Tuesday in the {stats['name']} sector. Recommend deploying additional vehicles."
+            confidence = max(70, min(99, stats["traffic"] + 5))
+        elif p["domain"] == "Energy":
+            peakGW = f"{stats['energyPeak'] / 1000:.1f}"
+            text = f"Demand forecast is approaching peak load of {peakGW} GW this weekend. Suggest enabling battery storage grid offset."
+            confidence = 94
+        p_copy["text"] = text
+        p_copy["confidence"] = max(70, min(99, confidence + random.randint(-2, 2)))
         predictions.append(p_copy)
     return jsonify(predictions)
 
 @app.route("/api/insights")
 def get_insights():
-    return jsonify(INSIGHTS)
+    latitude = request.args.get("latitude")
+    longitude = request.args.get("longitude")
+    lat = float(latitude) if latitude is not None else 12.9716
+    lng = float(longitude) if longitude is not None else 77.5946
+    stats = get_location_stats(lat, lng)
+
+    insights = []
+    for ins in INSIGHTS:
+        ins_copy = dict(ins)
+        body = ins["body"]
+        if ins["category"] == "Transportation":
+            body = f"AI analysis of ridership data in {stats['name']} reveals underperforming corridors. Rebalancing fleet allocation could improve transit efficiency by {stats['traffic'] - 10}%."
+        ins_copy["body"] = body
+        insights.append(ins_copy)
+    return jsonify(insights)
 
 @app.route("/api/metrics")
 def get_metrics():
+    latitude = request.args.get("latitude")
+    longitude = request.args.get("longitude")
+    lat = float(latitude) if latitude is not None else 12.9716
+    lng = float(longitude) if longitude is not None else 77.5946
+    stats = get_location_stats(lat, lng)
+
     def random_array(length, min_v, max_v):
         return [random.randint(min_v, max_v) for _ in range(length)]
+
+    def dynamic_array(length, base_val, val_range):
+        return [max(10, min(99, int(base_val + (random.random() * val_range * 2 - val_range)))) for _ in range(length)]
         
     heatmap = []
-    statuses = ["low", "med", "high", "crit"]
     for i in range(98):
+        val = random.random()
+        status = "low"
+        if val > 0.85:
+            status = "crit"
+        elif val > 0.65:
+            status = "high"
+        elif val > 0.35:
+            status = "med"
         heatmap.append({
             "zone": i + 1,
-            "value": random.random(),
-            "status": random.choice(statuses)
+            "value": val,
+            "status": status
         })
         
+    energy_data = []
+    for i in range(12):
+        hour = i + 8
+        is_peak = hour in [18, 19, 12, 13]
+        multiplier = 0.95 if is_peak else 0.7
+        val = round((stats["energyPeak"] * multiplier) / 20)
+        energy_data.append(max(10, min(99, val)))
+
     metrics_data = {
         "aqi": {
-            "score": random.randint(75, 95),
-            "pm25": random.randint(55, 75),
-            "pm10": random.randint(35, 55),
-            "no2": random.randint(30, 45),
-            "o3": random.randint(65, 80)
+            "score": stats["aqi"],
+            "pm25": round(stats["aqi"] * 0.7),
+            "pm10": round(stats["aqi"] * 0.5),
+            "no2": round(stats["aqi"] * 0.4),
+            "o3": round(stats["aqi"] * 0.8)
         },
-        "energy": random_array(12, 45, 95),
+        "energy": energy_data,
         "mobility": {
-            "bus": random_array(24, 40, 90),
-            "metro": random_array(24, 30, 70),
-            "traffic": random_array(24, 20, 80)
+            "bus": dynamic_array(24, stats["metro"] * 0.8, 8),
+            "metro": dynamic_array(24, stats["metro"], 10),
+            "traffic": [round(min(99, stats["traffic"] + random.randint(-5, 5) if i in [8, 9, 10, 17, 18, 19] else stats["traffic"] * 0.5 + random.randint(-5, 5))) for i in range(24)]
         },
         "health": {
-            "score": random.randint(72, 82),
+            "score": max(50, min(99, round(100 - stats["aqi"] * 0.2 - stats["traffic"] * 0.2))),
             "beds": round(random.uniform(4.0, 4.5), 1),
             "wait_time": random.randint(15, 22),
             "ambulance_eta": round(random.uniform(6.8, 8.2), 1),
@@ -500,15 +578,26 @@ def chat():
     if ai_client:
         try:
             system_instruction = (
-                "You are CivicMind AI, a decision intelligence platform for smart cities. "
-                "Analyze requests related to city operations (transportation, energy, environment, safety, healthcare, waste, etc.). "
-                "Provide detailed, structured data analysis, specific policy recommendations, and confidence metrics where appropriate. "
-                f"The user is located at latitude {lat}, longitude {lng}. If they ask for nearby hospitals or services, use these coordinates to construct a helpful response. "
-                "Use elegant markdown formatting including bold text, lists, and markdown tables if showing structured data comparisons."
+                "You are CivicMind AI, a premium decision intelligence platform for smart cities and urban planning.\n\n"
+                "Your goal is to provide high-fidelity, professional analytical reports on city operations including:\n"
+                "- Urban Mobility (transit, congestion, routing, priority signalling)\n"
+                "- Smart Grid Energy & Utilities (peak load forecasts, solar/wind offsets, battery dispatch)\n"
+                "- Public Safety & Emergency Services (ETAs, patrols, incident detection)\n"
+                "- Environmental Health (AQI metrics, PM2.5/PM10 levels, mitigation policies)\n"
+                "- Healthcare & Hospital Access (geospatial mapping, bed counts, wait times)\n"
+                "- Smart Waste Management (collection routes, source segregation, landfill capacity)\n\n"
+                f"The user's current coordinates are latitude {lat:.4f}, longitude {lng:.4f}. When requested to find nearby resources (such as hospitals or services) or analyze the local area, always calculate distances from these coordinates using the Haversine formula and present them in a clean markdown table.\n\n"
+                "Formatting guidelines:\n"
+                "1. Start with a header incorporating a relevant emoji (e.g., ### 🚦 GIS Decision Engine).\n"
+                "2. Always show the coordinates you are using for the analysis.\n"
+                "3. When answering questions about forecasts, grid demands, or spatial models, include a formal mathematical equation in LaTeX (e.g., using $$) and show a step-by-step calculation.\n"
+                "4. Present comparative stats or lists of services in structured markdown tables (e.g., Name, Distance, Available Capacity, Specialty, Rating).\n"
+                "5. Conclude with a clear 'Strategic Policy Recommendations' section and an analytical 'Confidence Score: XX% | Model: [ModelName]'.\n"
+                "6. Maintain a highly professional, academic, yet actionable tone suitable for city planners and municipal directors."
             )
             
             response = ai_client.models.generate_content(
-                model="gemini-3.5-flash",
+                model="gemini-2.5-flash",
                 contents=message,
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
