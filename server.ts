@@ -206,25 +206,39 @@ async function startServer() {
       },
       waste: randomArray(7, 40, 95),
       heatmap: Array.from({ length: 98 }, (_, i) => {
-        const val = Math.random();
+        let val = Math.random();
+        
+        // Dynamic influence of scenario sliders
+        const disruptionImpact = (disruption / 100) * 0.18;
+        const tempImpact = (tempOffset / 15) * 0.08;
+        const greenImpact = (greenCover / 100) * 0.12;
+        
+        val = Math.max(0.01, Math.min(0.99, val + disruptionImpact + tempImpact - greenImpact));
+        
         let status = "low";
-        if (val > 0.85) status = "crit";
-        else if (val > 0.65) status = "high";
-        else if (val > 0.35) status = "med";
+        if (val > 0.82) status = "crit";
+        else if (val > 0.62) status = "high";
+        else if (val > 0.32) status = "med";
 
         const localAqi = Math.round(stats.aqi * (0.85 + val * 0.3));
         const population = Math.floor(2000 + val * 18000);
         
         let anomaly = "Normal Operations";
         if (status === "crit") {
-          const anomalies = [
-            "Power Grid Overload",
-            "Severe Traffic Gridlock",
-            "High PM2.5 Exposure Alert",
-            "Emergency Clinic Bed Shortage",
-            "Overflowing Waste Hub"
-          ];
-          anomaly = anomalies[i % anomalies.length];
+          if (disruption > 35 && i % 2 === 0) {
+            anomaly = "Severe Traffic Gridlock";
+          } else if (tempOffset > 4 && i % 3 === 0) {
+            anomaly = "Power Grid Overload";
+          } else {
+            const anomalies = [
+              "Power Grid Overload",
+              "Severe Traffic Gridlock",
+              "High PM2.5 Exposure Alert",
+              "Emergency Clinic Bed Shortage",
+              "Overflowing Waste Hub"
+            ];
+            anomaly = anomalies[i % anomalies.length];
+          }
         } else if (status === "high") {
           anomaly = "Elevated Stress Metrics";
         }

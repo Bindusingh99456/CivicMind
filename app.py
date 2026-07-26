@@ -549,12 +549,20 @@ def get_metrics():
     heatmap = []
     for i in range(98):
         val = random.random()
+        
+        # Dynamic influence of scenario sliders
+        disruption_impact = (disruption / 100) * 0.18
+        temp_impact = (temp_offset / 15) * 0.08
+        green_impact = (green_cover / 100) * 0.12
+        
+        val = max(0.01, min(0.99, val + disruption_impact + temp_impact - green_impact))
+        
         status = "low"
-        if val > 0.85:
+        if val > 0.82:
             status = "crit"
-        elif val > 0.65:
+        elif val > 0.62:
             status = "high"
-        elif val > 0.35:
+        elif val > 0.32:
             status = "med"
 
         local_aqi = round(stats["aqi"] * (0.85 + val * 0.3))
@@ -562,16 +570,21 @@ def get_metrics():
         
         anomaly = "Normal Operations"
         if status == "crit":
-          anomalies = [
-            "Power Grid Overload",
-            "Severe Traffic Gridlock",
-            "High PM2.5 Exposure Alert",
-            "Emergency Clinic Bed Shortage",
-            "Overflowing Waste Hub"
-          ]
-          anomaly = anomalies[i % len(anomalies)]
+            if disruption > 35 and i % 2 == 0:
+                anomaly = "Severe Traffic Gridlock"
+            elif temp_offset > 4 and i % 3 == 0:
+                anomaly = "Power Grid Overload"
+            else:
+                anomalies = [
+                    "Power Grid Overload",
+                    "Severe Traffic Gridlock",
+                    "High PM2.5 Exposure Alert",
+                    "Emergency Clinic Bed Shortage",
+                    "Overflowing Waste Hub"
+                ]
+                anomaly = anomalies[i % len(anomalies)]
         elif status == "high":
-          anomaly = "Elevated Stress Metrics"
+            anomaly = "Elevated Stress Metrics"
 
         heatmap.append({
             "zone": i + 1,

@@ -68,6 +68,8 @@ export default function DashboardGrid({
   tempOffset
 }: DashboardGridProps) {
   const [viewMode, setViewMode] = React.useState<"heatmap" | "blueprint">("heatmap");
+  const [showTrafficFlow, setShowTrafficFlow] = React.useState(true);
+  const [showAmbulanceVectors, setShowAmbulanceVectors] = React.useState(true);
   if (!metrics) {
     return (
       <div className="flex flex-col items-center justify-center h-[580px] bg-slate-900/60 border border-slate-800 rounded-xl">
@@ -367,23 +369,47 @@ export default function DashboardGrid({
                   <span className="p-1 rounded bg-purple-500/10 text-purple-400">🗺️</span>
                   Geospatial Grid Sector Map & Diagnostics
                 </span>
-                <div className="flex items-center gap-1 bg-slate-950 p-0.5 rounded-lg border border-slate-800">
-                  <button
-                    onClick={() => setViewMode("heatmap")}
-                    className={`px-2 py-0.5 rounded text-[9px] font-mono uppercase transition-all ${
-                      viewMode === "heatmap" ? "bg-slate-800 text-cyan-400 font-bold" : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    Heatmap
-                  </button>
-                  <button
-                    onClick={() => setViewMode("blueprint")}
-                    className={`px-2 py-0.5 rounded text-[9px] font-mono uppercase transition-all ${
-                      viewMode === "blueprint" ? "bg-slate-800 text-cyan-400 font-bold" : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    Blueprint
-                  </button>
+                <div className="flex items-center gap-2">
+                  {viewMode === "blueprint" && (
+                    <div className="flex items-center gap-3 bg-slate-950/80 px-2 py-1 rounded-lg border border-slate-850 text-[9px] font-mono text-slate-400">
+                      <label className="flex items-center gap-1 cursor-pointer hover:text-slate-200 select-none">
+                        <input
+                          type="checkbox"
+                          checked={showTrafficFlow}
+                          onChange={(e) => setShowTrafficFlow(e.target.checked)}
+                          className="w-3 h-3 rounded border-slate-800 bg-slate-900 text-cyan-600 focus:ring-0 focus:ring-offset-0"
+                        />
+                        🚦 Traffic Flow
+                      </label>
+                      <label className="flex items-center gap-1 cursor-pointer hover:text-slate-200 select-none">
+                        <input
+                          type="checkbox"
+                          checked={showAmbulanceVectors}
+                          onChange={(e) => setShowAmbulanceVectors(e.target.checked)}
+                          className="w-3 h-3 rounded border-slate-800 bg-slate-900 text-cyan-600 focus:ring-0 focus:ring-offset-0"
+                        />
+                        🚑 Ambulances
+                      </label>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1 bg-slate-950 p-0.5 rounded-lg border border-slate-800">
+                    <button
+                      onClick={() => setViewMode("heatmap")}
+                      className={`px-2 py-0.5 rounded text-[9px] font-mono uppercase transition-all ${
+                        viewMode === "heatmap" ? "bg-slate-800 text-cyan-400 font-bold" : "text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      Heatmap
+                    </button>
+                    <button
+                      onClick={() => setViewMode("blueprint")}
+                      className={`px-2 py-0.5 rounded text-[9px] font-mono uppercase transition-all ${
+                        viewMode === "blueprint" ? "bg-slate-800 text-cyan-400 font-bold" : "text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      Blueprint
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -425,6 +451,47 @@ export default function DashboardGrid({
                         <path d="M 0 200 L 800 200" fill="none" stroke={strokeColor} strokeWidth="1.5" strokeDasharray="10 15">
                           <animate attributeName="stroke-dashoffset" values="0;150" dur={`${animSpeed * 0.8}s`} repeatCount="indefinite" />
                         </path>
+
+                        {/* Live Traffic Congestion Saturation Overlay */}
+                        {showTrafficFlow && (
+                          <>
+                            {/* Glow effect on Route D7 Congestion Ring */}
+                            <path d="M 100 200 C 180 150, 220 150, 300 200" fill="none" stroke="#ef4444" strokeWidth="6" opacity="0.45" strokeLinecap="round" />
+                            <path d="M 100 200 C 180 150, 220 150, 300 200" fill="none" stroke="#f43f5e" strokeWidth="2" strokeDasharray="6 8" opacity="0.9">
+                              <animate attributeName="stroke-dashoffset" values="50;0" dur="1.5s" repeatCount="indefinite" />
+                            </path>
+                            
+                            {/* Free Flowing green corridor on East expressway */}
+                            <path d="M 500 200 L 750 200" fill="none" stroke="#10b981" strokeWidth="5" opacity="0.3" strokeLinecap="round" />
+                            
+                            {/* Sector Labels & Interactive Hotspots */}
+                            <g transform="translate(180, 160)" className="pointer-events-none select-none">
+                              <rect width="75" height="13" rx="2" fill="#020617" stroke="#ef4444" strokeWidth="0.5" opacity="0.9" />
+                              <text x="37" y="9" fill="#fecdd3" fontSize="5.5" textAnchor="middle" fontWeight="semibold">CONGESTION 87%</text>
+                            </g>
+                          </>
+                        )}
+
+                        {/* Dispatch Response Vector & Ambulance Animation */}
+                        {showAmbulanceVectors && (
+                          <>
+                            {/* Ambulance route path line from Health Station (680, 220) to Hazard (200, 240) */}
+                            <path id="ambulance-route-1" d="M 680 220 C 500 280, 350 280, 200 240" fill="none" stroke="#06b6d4" strokeWidth="1.5" strokeDasharray="3 5" opacity="0.75" />
+                            <g>
+                              <circle cx="0" cy="0" r="9" fill="#090d16" stroke="#00d4ff" strokeWidth="1.5" />
+                              <text fontSize="10" textAnchor="middle" y="3" fill="#00d4ff">🚑</text>
+                              <animateMotion path="M 680 220 C 500 280, 350 280, 200 240" dur="7s" repeatCount="indefinite" rotate="auto" />
+                            </g>
+
+                            {/* Secondary Emergency Vector from Hospital Station 2 */}
+                            <path id="ambulance-route-2" d="M 100 80 Q 200 60 280 140" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="3 5" opacity="0.6" />
+                            <g>
+                              <circle cx="0" cy="0" r="9" fill="#090d16" stroke="#3b82f6" strokeWidth="1.5" />
+                              <text fontSize="10" textAnchor="middle" y="3" fill="#3b82f6">🚑</text>
+                              <animateMotion path="M 100 80 Q 200 60 280 140" dur="9s" repeatCount="indefinite" rotate="auto" />
+                            </g>
+                          </>
+                        )}
 
                         {/* Interactive Sector Pins */}
                         <g className="cursor-pointer" onClick={() => onSelectDomain("mobility")}>
