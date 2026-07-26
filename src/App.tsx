@@ -11,7 +11,8 @@ import {
   RefreshCw,
   Info,
   Layers,
-  Database
+  Database,
+  Terminal
 } from "lucide-react";
 import CivicMindChat from "./components/CivicMindChat";
 import DashboardGrid from "./components/DashboardGrid";
@@ -30,10 +31,71 @@ export default function App() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [showGpsMenu, setShowGpsMenu] = useState<boolean>(false);
   
+  // Scenario states
+  const [tempOffset, setTempOffset] = useState<number>(0);
+  const [transitDisruption, setTransitDisruption] = useState<number>(0);
+  const [greenInitiative, setGreenInitiative] = useState<number>(0);
+  const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
+
+  // Console state
+  const [consoleLogs, setConsoleLogs] = useState<string[]>([
+    `[${new Date().toLocaleTimeString([], { hour12: false })}] SYSTEM: Initializing CivicMind GIS Decision Engine...`,
+    `[${new Date().toLocaleTimeString([], { hour12: false })}] SYSTEM: Telemetry nodes resolved at 98 geographic coordinates.`,
+    `[${new Date().toLocaleTimeString([], { hour12: false })}] SYSTEM: Connected to AI Reasoning Engine (Gemini 2.5 Flash).`,
+    `[${new Date().toLocaleTimeString([], { hour12: false })}] SYSTEM: Standby for operator command.`
+  ]);
+
+  const logMessage = (msg: string) => {
+    const timestamp = new Date().toLocaleTimeString([], { hour12: false });
+    setConsoleLogs(prev => [...prev.slice(-99), `[${timestamp}] ${msg}`]);
+  };
+
+  const applyMacroPreset = (name: string, tOff: number, dis: number, green: number) => {
+    setTempOffset(tOff);
+    setTransitDisruption(dis);
+    setGreenInitiative(green);
+    logMessage(`MACRO PRESET: Triggered '${name}' (Thermal: ${tOff > 0 ? "+" + tOff : tOff}°C, Disruption: ${dis}%, Canopy: ${green}%)`);
+    fetchData(true, latitude, longitude, tOff, dis, green);
+  };
+  
   // Simulation states
   const [deployingId, setDeployingId] = useState<number | null>(null);
   const [deployedAlerts, setDeployedAlerts] = useState<Record<number, boolean>>({});
   const [runningSimulationIndex, setRunningSimulationIndex] = useState<number | null>(null);
+
+  const [projectionData, setProjectionData] = useState<any[] | null>(null);
+  const [projecting, setProjecting] = useState<boolean>(false);
+  const [projectionError, setProjectionError] = useState<string | null>(null);
+
+  const runProjectionForecast = async (policyText: string, sector: string, funding: number) => {
+    setProjecting(true);
+    setProjectionError(null);
+    logMessage(`FORECAST STARTED: Simulating 5-year trend for policy in '${sector}' sector...`);
+    try {
+      const response = await fetch("/api/projection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          policy: policyText,
+          sector: sector,
+          funding: funding,
+          latitude: latitude,
+          longitude: longitude
+        })
+      });
+      if (!response.ok) {
+        throw new Error("Failed to compile AI projection models.");
+      }
+      const data = await response.json();
+      setProjectionData(data);
+      logMessage(`FORECAST SUCCESS: 5-year simulation generated. Graphing vectors now.`);
+    } catch (err: any) {
+      setProjectionError(err.message || "Simulation error");
+      logMessage(`FORECAST ERROR: Simulation failed. Falling back to default matrices.`);
+    } finally {
+      setProjecting(false);
+    }
+  };
 
   // Grab location
   const requestLocation = () => {
@@ -57,9 +119,18 @@ export default function App() {
   };
 
   // Fetch telemetry
-  const fetchData = async (isManual = false, lat: number | null = latitude, lng: number | null = longitude) => {
+  const fetchData = async (
+    isManual = false,
+    lat: number | null = latitude,
+    lng: number | null = longitude,
+    tOffset = tempOffset,
+    disruption = transitDisruption,
+    green = greenInitiative
+  ) => {
     if (isManual) setRefreshing(true);
-    const query = lat !== null && lng !== null ? `?latitude=${lat}&longitude=${lng}` : "";
+    const query = lat !== null && lng !== null
+      ? `?latitude=${lat}&longitude=${lng}&tempOffset=${tOffset}&disruption=${disruption}&greenCover=${green}`
+      : `?tempOffset=${tOffset}&disruption=${disruption}&greenCover=${green}`;
     try {
       const [domainsRes, predictionsRes, insightsRes, metricsRes] = await Promise.all([
         fetch(`/api/domains${query}`),
@@ -113,17 +184,29 @@ export default function App() {
   const handleDeployAction = (index: number) => {
     if (deployingId !== null) return;
     setDeployingId(index);
+    const alert = predictions[index];
+    const alertDomain = alert ? alert.domain : "General";
+    logMessage(`DISPATCH STARTED: Deploying automated relief mitigation policy to ${alertDomain} Sector.`);
     setTimeout(() => {
       setDeployingId(null);
       setDeployedAlerts(prev => ({ ...prev, [index]: true }));
+      logMessage(`DISPATCH SUCCESS: Alert node successfully mitigated. Telemetry stabilizing.`);
     }, 1200);
   };
 
   const runSimulation = (index: number) => {
     setRunningSimulationIndex(index);
+    const simulatedModels = [
+      "Urban Mobility Optimizer",
+      "Smart Grid Peak Load Dispatch",
+      "Healthcare Resource Balancer"
+    ];
+    const modelName = simulatedModels[index] || "General Core Solver";
+    logMessage(`SIMULATION STARTED: Initiating calculations in '${modelName}' model...`);
     setTimeout(() => {
       setRunningSimulationIndex(null);
       fetchData(); // pull fresh fluctuating parameters
+      logMessage(`SIMULATION SUCCESS: Model recalculation completed. Telemetry buffers updated.`);
     }, 1500);
   };
 
@@ -308,6 +391,17 @@ export default function App() {
               activeDomainId={activeDomainId} 
               domains={domains}
               onSelectDomain={setActiveDomainId}
+              selectedZoneId={selectedZoneId}
+              onSelectZoneId={setSelectedZoneId}
+              projectionData={projectionData}
+              projecting={projecting}
+              projectionError={projectionError}
+              runProjectionForecast={runProjectionForecast}
+              latitude={latitude}
+              longitude={longitude}
+              transitDisruption={transitDisruption}
+              greenInitiative={greenInitiative}
+              tempOffset={tempOffset}
             />
 
             {/* Live Predictions Alerts */}
@@ -409,6 +503,122 @@ export default function App() {
               longitude={longitude} 
               requestLocation={requestLocation} 
             />
+
+            {/* Dynamic Scenario Simulator Panel */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl space-y-4">
+              <div className="flex items-center gap-2 border-b border-slate-800/60 pb-3 justify-between">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-400 flex items-center gap-1.5">
+                  <Activity className="w-4 h-4 text-cyan-400 animate-pulse" /> Scenario Simulation Controls
+                </span>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-cyan-950 border border-cyan-800 text-cyan-400">ACTIVE</span>
+              </div>
+              
+              <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
+                Adjust the sliders below to simulate macro-level municipal stressors and initiatives. Telemetry charts will update instantly.
+              </p>
+
+              {/* Macro Presets */}
+              <div className="space-y-1.5 pb-2 border-b border-slate-800/60">
+                <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider block">Macro Presets</span>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    onClick={() => applyMacroPreset("Heatwave Peak", 10, 15, 0)}
+                    className="px-2 py-1.5 bg-slate-950 hover:bg-amber-955/20 border border-slate-800 hover:border-amber-800/80 rounded text-[10px] text-left transition-all font-mono text-slate-300"
+                  >
+                    ⚡ Heatwave Peak
+                  </button>
+                  <button
+                    onClick={() => applyMacroPreset("Monsoon/Strike", -4, 75, 20)}
+                    className="px-2 py-1.5 bg-slate-950 hover:bg-cyan-955/20 border border-slate-800 hover:border-cyan-800/80 rounded text-[10px] text-left transition-all font-mono text-slate-300"
+                  >
+                    🌀 Monsoon/Strike
+                  </button>
+                  <button
+                    onClick={() => applyMacroPreset("Eco-Recovery", -2, 0, 90)}
+                    className="px-2 py-1.5 bg-slate-950 hover:bg-emerald-955/20 border border-slate-800 hover:border-emerald-800/80 rounded text-[10px] text-left transition-all font-mono text-slate-300"
+                  >
+                    🌳 Eco-Recovery
+                  </button>
+                  <button
+                    onClick={() => applyMacroPreset("Grid Crisis", 12, 40, 0)}
+                    className="px-2 py-1.5 bg-slate-950 hover:bg-rose-955/20 border border-slate-800 hover:border-rose-800/80 rounded text-[10px] text-left transition-all font-mono text-slate-300"
+                  >
+                    ⚠️ Grid Crisis
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-1">
+                {/* Temperature Slider */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[11px] font-mono">
+                    <span className="text-slate-400">Thermal Offset:</span>
+                    <span className={`font-bold ${tempOffset > 0 ? "text-amber-400" : tempOffset < 0 ? "text-cyan-400" : "text-slate-300"}`}>
+                      {tempOffset > 0 ? `+${tempOffset}` : tempOffset}°C
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-15"
+                    max="15"
+                    value={tempOffset}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setTempOffset(val);
+                      fetchData(true, latitude, longitude, val, transitDisruption, greenInitiative);
+                    }}
+                    className="w-full h-1 bg-slate-850 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                  />
+                  <span className="text-[9px] text-slate-500 block leading-none font-mono">Simulates Heatwaves/Coldfronts (Grid Load Impact)</span>
+                </div>
+
+                {/* Disruption Slider */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[11px] font-mono">
+                    <span className="text-slate-400">Transit Disruption:</span>
+                    <span className={`font-bold ${transitDisruption > 0 ? "text-rose-400" : "text-slate-300"}`}>
+                      {transitDisruption}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={transitDisruption}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setTransitDisruption(val);
+                      fetchData(true, latitude, longitude, tempOffset, val, greenInitiative);
+                    }}
+                    className="w-full h-1 bg-slate-855 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                  />
+                  <span className="text-[9px] text-slate-500 block leading-none font-mono">Simulates strikes/closures (Congestion & ETA Impact)</span>
+                </div>
+
+                {/* Green Initiative Slider */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[11px] font-mono">
+                    <span className="text-slate-400">Urban Canopy Cover:</span>
+                    <span className={`font-bold ${greenInitiative > 0 ? "text-emerald-400" : "text-slate-300"}`}>
+                      +{greenInitiative}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={greenInitiative}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setGreenInitiative(val);
+                      fetchData(true, latitude, longitude, tempOffset, transitDisruption, val);
+                    }}
+                    className="w-full h-1 bg-slate-860 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                  />
+                  <span className="text-[9px] text-slate-500 block leading-none font-mono">Simulates tree planting (AQI & Health Improvement)</span>
+                </div>
+              </div>
+            </div>
 
             {/* Interactive Domain Sector list */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
@@ -537,6 +747,56 @@ export default function App() {
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        {/* Municipal Dispatch Log Console */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
+            <div className="flex items-center gap-2">
+              <Terminal className="w-4 h-4 text-cyan-400 animate-pulse" />
+              <h3 className="font-sans font-semibold text-xs text-slate-100 tracking-wider uppercase">
+                Municipal Dispatch Log Console
+              </h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span className="text-[9px] font-mono text-emerald-400 uppercase tracking-widest">CONSOLE ONLINE</span>
+            </div>
+          </div>
+
+          <div 
+            className="bg-slate-950 p-4 rounded-lg border border-slate-850 h-[150px] overflow-y-auto font-mono text-[10px] text-cyan-500/90 space-y-1.5 scrollbar-thin scrollbar-thumb-slate-800"
+            ref={(el) => {
+              if (el) el.scrollTop = el.scrollHeight;
+            }}
+          >
+            {consoleLogs.map((log, i) => {
+              let color = "text-cyan-500/90";
+              if (log.includes("DISPATCH SUCCESS") || log.includes("SIMULATION SUCCESS")) {
+                color = "text-emerald-400 font-semibold";
+              } else if (log.includes("STARTED") || log.includes("Triggered")) {
+                color = "text-amber-400";
+              } else if (log.includes("SYSTEM")) {
+                color = "text-slate-500";
+              }
+              return (
+                <div key={i} className={`${color} leading-relaxed`}>
+                  {log}
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center justify-between text-[9px] font-mono text-slate-500">
+            <span>Buffer: Active (keeping last 100 entries)</span>
+            <button 
+              onClick={() => {
+                setConsoleLogs([`[${new Date().toLocaleTimeString([], { hour12: false })}] SYSTEM: Console logs cleared by operator.`]);
+              }}
+              className="text-slate-500 hover:text-cyan-400 transition-colors uppercase tracking-wider text-[8px] bg-slate-950 px-2 py-1 rounded border border-slate-850"
+            >
+              Clear Console
+            </button>
           </div>
         </div>
       </main>

@@ -58,4 +58,8 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
+  image?: {
+    data: string;
+    mimeType: string;
+  } | null;
 }

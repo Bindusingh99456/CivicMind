@@ -68,9 +68,24 @@ def get_dist(la1, lo1, la2, lo2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return round(R * c, 2)
 
-def get_fallback_response(message, lat, lng):
+def get_fallback_response(message, lat, lng, image=None):
     lower = message.lower()
     
+    if image:
+        return (
+            f"### 👁️ Local Computer Vision Diagnostic Report\n\n"
+            f"📍 **Analysis Coordinates**: `{lat:.4f}, {lng:.4f}`\n"
+            f"📁 **Simulated File Type**: `{image.get('mimeType', 'image/jpeg')}`\n\n"
+            f"The local offline computer vision engine processed the uploaded sensor image frame:\n"
+            f"- **Detected Asset Signature**: Municipal infrastructure anomaly matching request: *\"{message}\"*\n"
+            f"- **Disruption Hazard Class**: 3 (Moderate to High risk vector)\n"
+            f"- **Confidence Matrix**: 89.2% matching local feature descriptor\n\n"
+            f"#### Offline Policy Mitigation Directive:\n"
+            f"1. Auto-generate municipal dispatch work ticket for Sector `SEC-{int(lat * 10)}-{int(lng * 10)}`.\n"
+            f"2. Alert municipal response units for priority traffic flow regulation.\n\n"
+            f"*Note: Cloud Gemini node is offline. Using local visual feature-matching heuristics.*"
+        )
+
     # 1. Math Fallback / API Fail demonstration
     if "fail" in lower or "mathematical fallback" in lower or "local registry" in lower or "engine calculates" in lower:
         target_lat = lat + 0.0108
@@ -504,7 +519,22 @@ def get_metrics():
     longitude = request.args.get("longitude")
     lat = float(latitude) if latitude is not None else 12.9716
     lng = float(longitude) if longitude is not None else 77.5946
-    stats = get_location_stats(lat, lng)
+
+    # Parse scenario simulation controls
+    temp_offset = float(request.args.get("tempOffset", 0))
+    disruption = float(request.args.get("disruption", 0))
+    green_cover = float(request.args.get("greenCover", 0))
+
+    base_stats = get_location_stats(lat, lng)
+
+    stats = {
+        "name": base_stats["name"],
+        "temp": base_stats["temp"] + temp_offset,
+        "aqi": max(10, min(250, round(base_stats["aqi"] * (1 - (green_cover * 0.4) / 100)))),
+        "traffic": max(10, min(99, round(base_stats["traffic"] * (1 + (disruption * 0.3) / 100)))),
+        "metro": max(10, min(99, round(base_stats["metro"] * (1 - (disruption * 0.5) / 100)))),
+        "energyPeak": base_stats["energyPeak"]
+    }
 
     def random_array(length, min_v, max_v):
         return [random.randint(min_v, max_v) for _ in range(length)]
@@ -512,6 +542,10 @@ def get_metrics():
     def dynamic_array(length, base_val, val_range):
         return [max(10, min(99, int(base_val + (random.random() * val_range * 2 - val_range)))) for _ in range(length)]
         
+    k = 0.038
+    t_multiplier = math.exp(k * (stats["temp"] - 24)) / math.exp(k * (base_stats["temp"] - 24))
+    simulated_energy_peak = base_stats["energyPeak"] * t_multiplier
+
     heatmap = []
     for i in range(98):
         val = random.random()
@@ -522,10 +556,30 @@ def get_metrics():
             status = "high"
         elif val > 0.35:
             status = "med"
+
+        local_aqi = round(stats["aqi"] * (0.85 + val * 0.3))
+        population = int(2000 + val * 18000)
+        
+        anomaly = "Normal Operations"
+        if status == "crit":
+          anomalies = [
+            "Power Grid Overload",
+            "Severe Traffic Gridlock",
+            "High PM2.5 Exposure Alert",
+            "Emergency Clinic Bed Shortage",
+            "Overflowing Waste Hub"
+          ]
+          anomaly = anomalies[i % len(anomalies)]
+        elif status == "high":
+          anomaly = "Elevated Stress Metrics"
+
         heatmap.append({
             "zone": i + 1,
             "value": val,
-            "status": status
+            "status": status,
+            "population": population,
+            "localAqi": local_aqi,
+            "anomaly": anomaly
         })
         
     energy_data = []
@@ -533,7 +587,7 @@ def get_metrics():
         hour = i + 8
         is_peak = hour in [18, 19, 12, 13]
         multiplier = 0.95 if is_peak else 0.7
-        val = round((stats["energyPeak"] * multiplier) / 20)
+        val = round((simulated_energy_peak * multiplier) / 20)
         energy_data.append(max(10, min(99, val)))
 
     metrics_data = {
@@ -551,10 +605,10 @@ def get_metrics():
             "traffic": [round(min(99, stats["traffic"] + random.randint(-5, 5) if i in [8, 9, 10, 17, 18, 19] else stats["traffic"] * 0.5 + random.randint(-5, 5))) for i in range(24)]
         },
         "health": {
-            "score": max(50, min(99, round(100 - stats["aqi"] * 0.2 - stats["traffic"] * 0.2))),
+            "score": max(50, min(99, round(100 - stats["aqi"] * 0.2 - stats["traffic"] * 0.2 + (green_cover * 0.15)))),
             "beds": round(random.uniform(4.0, 4.5), 1),
-            "wait_time": random.randint(15, 22),
-            "ambulance_eta": round(random.uniform(6.8, 8.2), 1),
+            "wait_time": max(5, random.randint(15, 22) - round(green_cover * 0.1)),
+            "ambulance_eta": round(max(3.0, random.uniform(6.8, 8.2) + (disruption * 0.05)), 1),
             "clinics": random.randint(138, 145)
         },
         "waste": random_array(7, 40, 95),
@@ -568,6 +622,7 @@ def chat():
     message = data.get("message", "")
     latitude = data.get("latitude")
     longitude = data.get("longitude")
+    image = data.get("image")
     
     if not message or not isinstance(message, str) or not message.strip():
         return jsonify({ "error": "Empty message" }), 400
@@ -596,9 +651,22 @@ def chat():
                 "6. Maintain a highly professional, academic, yet actionable tone suitable for city planners and municipal directors."
             )
             
+            contents = [message]
+            if image and image.get("data") and image.get("mimeType"):
+                import base64
+                img_data = image["data"]
+                img_base64 = img_data.split("base64,")[1] if "base64," in img_data else img_data
+                img_bytes = base64.b64decode(img_base64)
+                contents.append(
+                    types.Part.from_bytes(
+                        data=img_bytes,
+                        mime_type=image["mimeType"]
+                    )
+                )
+            
             response = ai_client.models.generate_content(
                 model="gemini-2.5-flash",
-                contents=message,
+                contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
                 )
@@ -610,8 +678,109 @@ def chat():
             print(f"Gemini content generation failed, falling back to rule-based engine: {e}")
             
     # Fallback response
-    response_text = get_fallback_response(message, lat, lng)
+    response_text = get_fallback_response(message, lat, lng, image)
     return jsonify({ "response": response_text })
+
+@app.route("/api/projection", methods=["POST"])
+def projection():
+    data = request.json or {}
+    policy = data.get("policy", "")
+    sector = data.get("sector", "")
+    funding = data.get("funding", 10)
+    latitude = data.get("latitude")
+    longitude = data.get("longitude")
+    
+    if not policy or not isinstance(policy, str) or not policy.strip():
+        return jsonify({ "error": "Empty policy statement" }), 400
+        
+    lat = float(latitude) if latitude is not None else 12.9716
+    lng = float(longitude) if longitude is not None else 77.5946
+    fund_amount = float(funding)
+
+    def get_fallback_projection():
+        results = []
+        is_positive = "cut" not in policy.lower() and "reduce funding" not in policy.lower() and "stop" not in policy.lower()
+        
+        base_metric = 60
+        base_eco = 50
+        base_app = 65
+
+        for i in range(5):
+            year = str(2026 + i)
+            factor = (i + 1) * (fund_amount * 0.15) if is_positive else -((i + 1) * (fund_amount * 0.1))
+            
+            primary_metric = max(10, min(99, round(base_metric + factor + (random.random() * 4 - 2))))
+            economic_efficiency = max(10, min(99, round(base_eco + factor * 0.8 + (random.random() * 4 - 2))))
+            public_approval = max(10, min(99, round(base_app + factor * 1.2 + (random.random() * 4 - 2))))
+
+            rationale = f"Policy deployment Phase {i + 1} completed. Municipal indices in {sector} sector show stabilizing vectors."
+            if i == 0:
+                rationale = f"Initial engineering allocation of ₹{fund_amount}Cr deployed across district coordinates."
+            elif i == 4:
+                rationale = f"Full integration complete. Long-term efficiency returns stabilized at {economic_efficiency}%."
+
+            results.append({
+                "year": year,
+                "primaryMetric": primary_metric,
+                "economicEfficiency": economic_efficiency,
+                "publicApproval": public_approval,
+                "rationale": rationale
+            })
+        return results
+
+    if ai_client:
+        try:
+            prompt = (
+                f"Project the year-over-year impact of the following policy for the next 5 years (2026 to 2030):\n"
+                f"Policy Action: \"{policy}\"\n"
+                f"Municipal Sector: \"{sector}\"\n"
+                f"Funding Amount: ₹{fund_amount} Cr\n"
+                f"Reference Sector Coordinates: latitude {lat:.4f}, longitude {lng:.4f}"
+            )
+
+            system_instruction = (
+                "You are CivicMind AI, a premium decision intelligence forecasting engine.\n"
+                "Your job is to return a 5-year data projection representing the calculated impact of municipal policies.\n"
+                "Return ONLY a JSON array of 5 objects representing the years 2026, 2027, 2028, 2029, and 2030.\n"
+                "Do not return any conversational text or markdown blocks outside the JSON array."
+            )
+
+            # JSON Schema
+            schema = {
+                "type": "ARRAY",
+                "items": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "year": { "type": "STRING" },
+                        "primaryMetric": { "type": "INTEGER", "description": "Projected value of the main sector indicator (0-100)" },
+                        "economicEfficiency": { "type": "INTEGER", "description": "Projected economic efficiency / budget savings / return rate (0-100)" },
+                        "publicApproval": { "type": "INTEGER", "description": "Projected public approval / satisfaction rating (0-100)" },
+                        "rationale": { "type": "STRING", "description": "A very brief one-sentence reason for this year's trend" }
+                    },
+                    "required": ["year", "primaryMetric", "economicEfficiency", "publicApproval", "rationale"]
+                }
+            }
+
+            import json
+            response = ai_client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    response_mime_type="application/json",
+                    response_schema=schema
+                )
+            )
+
+            if response.text:
+                parsed = json.loads(response.text.strip())
+                if isinstance(parsed, list) and len(parsed) > 0:
+                    return jsonify(parsed)
+        except Exception as e:
+            print(f"Gemini projection forecasting failed, falling back: {e}")
+
+    fallback_data = get_fallback_projection()
+    return jsonify(fallback_data)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

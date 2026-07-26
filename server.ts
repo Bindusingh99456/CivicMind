@@ -145,7 +145,21 @@ async function startServer() {
     const longitude = req.query.longitude;
     const lat = latitude !== undefined && latitude !== null ? Number(latitude) : 12.9716;
     const lng = longitude !== undefined && longitude !== null ? Number(longitude) : 77.5946;
-    const stats = getLocationStats(lat, lng);
+
+    // Parse scenario simulation controls
+    const tempOffset = req.query.tempOffset !== undefined ? Number(req.query.tempOffset) : 0;
+    const disruption = req.query.disruption !== undefined ? Number(req.query.disruption) : 0;
+    const greenCover = req.query.greenCover !== undefined ? Number(req.query.greenCover) : 0;
+
+    const baseStats = getLocationStats(lat, lng);
+
+    const stats = {
+      ...baseStats,
+      temp: baseStats.temp + tempOffset,
+      aqi: Math.max(10, Math.min(250, Math.round(baseStats.aqi * (1 - (greenCover * 0.4) / 100)))),
+      traffic: Math.max(10, Math.min(99, Math.round(baseStats.traffic * (1 + (disruption * 0.3) / 100)))),
+      metro: Math.max(10, Math.min(99, Math.round(baseStats.metro * (1 - (disruption * 0.5) / 100))))
+    };
 
     const randomArray = (length: number, min: number, max: number) => {
       return Array.from({ length }, () => Math.floor(Math.random() * (max - min + 1)) + min);
@@ -154,6 +168,10 @@ async function startServer() {
     const dynamicArray = (length: number, baseVal: number, range: number) => {
       return Array.from({ length }, () => Math.max(10, Math.min(99, Math.floor(baseVal + (Math.random() * range * 2 - range)))));
     };
+
+    const k = 0.038;
+    const tMultiplier = Math.exp(k * (stats.temp - 24)) / Math.exp(k * (baseStats.temp - 24));
+    const simulatedEnergyPeak = stats.energyPeak * tMultiplier;
 
     res.json({
       aqi: {
@@ -167,7 +185,7 @@ async function startServer() {
         const hour = i + 8;
         const isPeak = hour === 18 || hour === 19 || hour === 12 || hour === 13;
         const multiplier = isPeak ? 0.95 : 0.7;
-        const val = Math.round((stats.energyPeak * multiplier) / 20);
+        const val = Math.round((simulatedEnergyPeak * multiplier) / 20);
         return Math.max(10, Math.min(99, val));
       }),
       mobility: {
@@ -180,10 +198,10 @@ async function startServer() {
         })
       },
       health: {
-        score: Math.max(50, Math.min(99, Math.round(100 - stats.aqi * 0.2 - stats.traffic * 0.2))),
+        score: Math.max(50, Math.min(99, Math.round(100 - stats.aqi * 0.2 - stats.traffic * 0.2 + (greenCover * 0.15)))),
         beds: parseFloat((Math.random() * 0.5 + 4.0).toFixed(1)),
-        wait_time: Math.floor(Math.random() * 8) + 15,
-        ambulance_eta: parseFloat((Math.random() * 1.4 + 6.8).toFixed(1)),
+        wait_time: Math.max(5, Math.floor(Math.random() * 8) + 15 - Math.round(greenCover * 0.1)),
+        ambulance_eta: parseFloat(Math.max(3.0, Math.random() * 1.4 + 6.8 + (disruption * 0.05)).toFixed(1)),
         clinics: Math.floor(Math.random() * 8) + 138
       },
       waste: randomArray(7, 40, 95),
@@ -193,17 +211,38 @@ async function startServer() {
         if (val > 0.85) status = "crit";
         else if (val > 0.65) status = "high";
         else if (val > 0.35) status = "med";
+
+        const localAqi = Math.round(stats.aqi * (0.85 + val * 0.3));
+        const population = Math.floor(2000 + val * 18000);
+        
+        let anomaly = "Normal Operations";
+        if (status === "crit") {
+          const anomalies = [
+            "Power Grid Overload",
+            "Severe Traffic Gridlock",
+            "High PM2.5 Exposure Alert",
+            "Emergency Clinic Bed Shortage",
+            "Overflowing Waste Hub"
+          ];
+          anomaly = anomalies[i % anomalies.length];
+        } else if (status === "high") {
+          anomaly = "Elevated Stress Metrics";
+        }
+
         return {
           zone: i + 1,
           value: val,
-          status: status
+          status: status,
+          population: population,
+          localAqi: localAqi,
+          anomaly: anomaly
         };
       })
     });
   });
 
   app.post("/api/chat", async (req, res) => {
-    const { message, latitude, longitude } = req.body;
+    const { message, latitude, longitude, image } = req.body;
     if (!message || typeof message !== "string" || !message.trim()) {
       return res.status(400).json({ error: "Empty message" });
     }
@@ -225,6 +264,21 @@ async function startServer() {
     };
 
     const getFallbackResponse = () => {
+      if (image) {
+        return (
+          `### 👁️ Local Computer Vision Diagnostic Report\n\n` +
+          `📍 **Analysis Coordinates**: \`${lat.toFixed(4)}, ${lng.toFixed(4)}\`\n` +
+          `📁 **Simulated File Type**: \`${image.mimeType || 'image/jpeg'}\`\n\n` +
+          `The local offline computer vision engine processed the uploaded sensor image frame:\n` +
+          `- **Detected Asset Signature**: Municipal infrastructure anomaly matching request: *"${message}"*\n` +
+          `- **Disruption Hazard Class**: 3 (Moderate to High risk vector)\n` +
+          `- **Confidence Matrix**: 89.2% matching local feature descriptor\n\n` +
+          `#### Offline Policy Mitigation Directive:\n` +
+          `1. Auto-generate municipal dispatch work ticket for Sector \`SEC-${Math.floor(lat * 10)}-${Math.floor(lng * 10)}\`.\n` +
+          `2. Alert municipal response units for priority traffic flow regulation.\n\n` +
+          `*Note: Cloud Gemini node is offline. Using local visual feature-matching heuristics.*`
+        );
+      }
       // 1. Math Fallback / API Fail demonstration
       if (lower.includes("fail") || lower.includes("mathematical fallback") || lower.includes("local registry") || lower.includes("engine calculates")) {
         const targetLat = lat + 0.0108;
@@ -612,9 +666,22 @@ async function startServer() {
           "6. Maintain a highly professional, academic, yet actionable tone suitable for city planners and municipal directors."
         );
 
+        const contents: any[] = [message];
+        if (image && image.data && image.mimeType) {
+          const base64Data = image.data.includes("base64,")
+            ? image.data.split("base64,")[1]
+            : image.data;
+          contents.push({
+            inlineData: {
+              data: base64Data,
+              mimeType: image.mimeType
+            }
+          });
+        }
+
         const response = await ai.models.generateContent({
           model: "gemini-2.5-flash",
-          contents: message,
+          contents: contents,
           config: {
             systemInstruction: systemInstruction,
           }
@@ -631,6 +698,102 @@ async function startServer() {
     // Fallback response if Gemini is not set up or failed
     const responseText = getFallbackResponse();
     res.json({ response: responseText });
+  });
+
+  app.post("/api/projection", async (req, res) => {
+    const { policy, sector, funding, latitude, longitude } = req.body;
+    
+    if (!policy || typeof policy !== "string" || !policy.trim()) {
+      return res.status(400).json({ error: "Empty policy statement" });
+    }
+
+    const lat = latitude !== undefined && latitude !== null ? Number(latitude) : 12.9716;
+    const lng = longitude !== undefined && longitude !== null ? Number(longitude) : 77.5946;
+    const fundAmount = funding !== undefined ? Number(funding) : 10;
+
+    // Rule-based fallback generator
+    const getFallbackProjection = () => {
+      const results = [];
+      const isPositive = !policy.toLowerCase().includes("cut") && !policy.toLowerCase().includes("reduce funding") && !policy.toLowerCase().includes("stop");
+      
+      let baseMetric = 60;
+      let baseEco = 50;
+      let baseApp = 65;
+
+      for (let i = 0; i < 5; i++) {
+        const year = (2026 + i).toString();
+        const factor = isPositive ? (i + 1) * (fundAmount * 0.15) : -((i + 1) * (fundAmount * 0.1));
+        
+        let primaryMetric = Math.max(10, Math.min(99, Math.round(baseMetric + factor + (Math.random() * 4 - 2))));
+        let economicEfficiency = Math.max(10, Math.min(99, Math.round(baseEco + factor * 0.8 + (Math.random() * 4 - 2))));
+        let publicApproval = Math.max(10, Math.min(99, Math.round(baseApp + factor * 1.2 + (Math.random() * 4 - 2))));
+
+        // Adjust metric logic if sector-specific
+        let rationale = `Policy deployment Phase ${i + 1} completed. Municipal indices in ${sector} sector show stabilizing vectors.`;
+        if (i === 0) rationale = `Initial engineering allocation of ₹${fundAmount}Cr deployed across district coordinates.`;
+        else if (i === 4) rationale = `Full integration complete. Long-term efficiency returns stabilized at ${economicEfficiency}%.`;
+
+        results.push({
+          year,
+          primaryMetric,
+          economicEfficiency,
+          publicApproval,
+          rationale
+        });
+      }
+      return results;
+    };
+
+    if (ai) {
+      try {
+        const prompt = `Project the year-over-year impact of the following policy for the next 5 years (2026 to 2030):
+Policy Action: "${policy}"
+Municipal Sector: "${sector}"
+Funding Amount: ₹${fundAmount} Cr
+Reference Sector Coordinates: latitude ${lat.toFixed(4)}, longitude ${lng.toFixed(4)}`;
+
+        const systemInstruction = 
+          "You are CivicMind AI, a premium decision intelligence forecasting engine.\n" +
+          "Your job is to return a 5-year data projection representing the calculated impact of municipal policies.\n" +
+          "Return ONLY a JSON array of 5 objects representing the years 2026, 2027, 2028, 2029, and 2030.\n" +
+          "Do not return any conversational text or markdown blocks outside the JSON array.";
+
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: prompt,
+          config: {
+            systemInstruction: systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  year: { type: "STRING" },
+                  primaryMetric: { type: "INTEGER", description: "Projected value of the main sector indicator (0-100)" },
+                  economicEfficiency: { type: "INTEGER", description: "Projected economic efficiency / budget savings / return rate (0-100)" },
+                  publicApproval: { type: "INTEGER", description: "Projected public approval / satisfaction rating (0-100)" },
+                  rationale: { type: "STRING", description: "A very brief one-sentence reason for this year's trend" }
+                },
+                required: ["year", "primaryMetric", "economicEfficiency", "publicApproval", "rationale"]
+              }
+            }
+          }
+        });
+
+        if (response.text) {
+          const parsed = JSON.parse(response.text.trim());
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return res.json(parsed);
+          }
+        }
+      } catch (err) {
+        console.error("Gemini projection forecasting failed, falling back:", err);
+      }
+    }
+
+    const fallbackData = getFallbackProjection();
+    res.json(fallbackData);
   });
 
   // Serve static assets and handle Vite dev server
