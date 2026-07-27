@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Send, MapPin, Sparkles, Loader2, RefreshCw, Trash2, Mic, Volume2, Image, X } from "lucide-react";
+import { Send, MapPin, Sparkles, Loader2, RefreshCw, Trash2, Mic, Volume2, Image, X, Maximize2, Minimize2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Message } from "../types";
@@ -8,9 +8,19 @@ interface CivicMindChatProps {
   latitude: number | null;
   longitude: number | null;
   requestLocation: () => void;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
+  onActiveUse?: () => void;
 }
 
-export default function CivicMindChat({ latitude, longitude, requestLocation }: CivicMindChatProps) {
+export default function CivicMindChat({ 
+  latitude, 
+  longitude, 
+  requestLocation,
+  isExpanded = false,
+  onToggleExpand,
+  onActiveUse
+}: CivicMindChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
@@ -208,6 +218,7 @@ export default function CivicMindChat({ latitude, longitude, requestLocation }: 
   };
 
   const handlePresetSelect = (type: "pothole" | "garbage" | "traffic" | "grid") => {
+    onActiveUse?.();
     const preset = generatePresetImage(type);
     if (!preset) return;
     setImage(preset);
@@ -245,6 +256,7 @@ export default function CivicMindChat({ latitude, longitude, requestLocation }: 
 
   const handleSendMessage = async (textToSend: string, imageToSend = image) => {
     if (!textToSend.trim() || loading) return;
+    onActiveUse?.();
 
     const userMsg: Message = {
       role: "user",
@@ -314,9 +326,9 @@ export default function CivicMindChat({ latitude, longitude, requestLocation }: 
   };
 
   return (
-    <div id="civicmind-chat-panel" className="flex flex-col h-[580px] bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
+    <div id="civicmind-chat-panel" className={`flex flex-col transition-all duration-300 ${isExpanded ? 'h-[680px]' : 'h-[580px]'} bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl`}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-950 border-b border-slate-800">
+      <div className="flex items-center justify-between px-4 py-3 bg-slate-955 border-b border-slate-800">
         <div className="flex items-center gap-2">
           <div className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
@@ -342,6 +354,17 @@ export default function CivicMindChat({ latitude, longitude, requestLocation }: 
             {latitude ? `${latitude.toFixed(2)}, ${longitude?.toFixed(2)}` : "GPS Off"}
           </button>
           
+          {onToggleExpand && (
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              title={isExpanded ? "Minimize Chat" : "Maximize Chat"}
+              className="p-1.5 rounded-md border border-slate-800 bg-slate-900 text-slate-400 hover:text-cyan-400 hover:bg-slate-800 transition-colors"
+            >
+              {isExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            </button>
+          )}
+
           <button
             onClick={clearChat}
             title="Reset Conversation"
@@ -493,7 +516,10 @@ export default function CivicMindChat({ latitude, longitude, requestLocation }: 
         <input
           type="text"
           value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+            onActiveUse?.();
+          }}
           disabled={loading}
           placeholder="Ask simulation questions..."
           className="flex-1 px-3.5 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-600 focus:ring-1 focus:ring-cyan-600 transition-colors"

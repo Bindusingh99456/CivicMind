@@ -30,6 +30,7 @@ export default function App() {
   const [liveClock, setLiveClock] = useState<string>("");
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [showGpsMenu, setShowGpsMenu] = useState<boolean>(false);
+  const [isChatExpanded, setIsChatExpanded] = useState<boolean>(false);
   
   // Scenario states
   const [tempOffset, setTempOffset] = useState<number>(0);
@@ -555,13 +556,36 @@ export default function App() {
           </div>
 
           {/* Dashboard Right Side: AI Assistant & Sector Metrics Selector (One-third Column) */}
-          <div className="space-y-6">
+          <div className="lg:col-span-1 space-y-6">
             {/* AI Assistant Chat Panel */}
-            <CivicMindChat 
-              latitude={latitude} 
-              longitude={longitude} 
-              requestLocation={requestLocation} 
-            />
+            {isChatExpanded && (
+              <div className="bg-slate-900/40 border border-slate-800 border-dashed rounded-xl p-6 h-[580px] flex flex-col items-center justify-center text-center gap-3">
+                <div className="p-3 rounded-full bg-cyan-950/50 border border-cyan-800/40 text-cyan-400">
+                  <Sparkles className="w-6 h-6 animate-pulse" />
+                </div>
+                <span className="font-sans font-bold text-sm text-slate-300">Copilot Maximize Mode Active</span>
+                <p className="text-xs text-slate-500 max-w-[200px]">The Decision AI Copilot is currently active in full overlay mode.</p>
+                <button 
+                  onClick={() => setIsChatExpanded(false)}
+                  className="mt-2 px-4 py-1.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-cyan-600 rounded-lg text-xs font-mono text-slate-300 transition-colors"
+                >
+                  Restore to Panel
+                </button>
+              </div>
+            )}
+            
+            <div className={isChatExpanded ? "fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4" : "relative"}>
+              <div className={isChatExpanded ? "w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl relative animate-fade-in" : "relative"}>
+                <CivicMindChat 
+                  latitude={latitude} 
+                  longitude={longitude} 
+                  requestLocation={requestLocation} 
+                  isExpanded={isChatExpanded}
+                  onToggleExpand={() => setIsChatExpanded(!isChatExpanded)}
+                  onActiveUse={() => setIsChatExpanded(true)}
+                />
+              </div>
+            </div>
 
             {/* Dynamic Scenario Simulator Panel */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl space-y-4">
