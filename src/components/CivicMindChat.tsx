@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Send, MapPin, Sparkles, Loader2, RefreshCw, Trash2, Mic, Volume2, Image, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Message } from "../types";
 
 interface CivicMindChatProps {
@@ -32,7 +33,8 @@ export default function CivicMindChat({ latitude, longitude, requestLocation }: 
 
   const promptSuggestions = [
     "Find nearest hospital",
-    "Analyze traffic congestion",
+    "Find nearby metros",
+    "Analyze traffic in present area",
     "Optimize grid demand",
     "Audit public safety"
   ];
@@ -370,7 +372,7 @@ export default function CivicMindChat({ latitude, longitude, requestLocation }: 
                 </div>
               )}
               <div className="markdown-body select-text overflow-x-auto leading-relaxed prose prose-invert prose-xs max-w-none">
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
               </div>
               <div className="mt-2 flex items-center justify-between border-t border-slate-850/60 pt-1.5 gap-4">
                 <button

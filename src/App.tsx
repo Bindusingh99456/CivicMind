@@ -62,6 +62,7 @@ export default function App() {
   const [deployingId, setDeployingId] = useState<number | null>(null);
   const [deployedAlerts, setDeployedAlerts] = useState<Record<number, boolean>>({});
   const [runningSimulationIndex, setRunningSimulationIndex] = useState<number | null>(null);
+  const [isCrisisMode, setIsCrisisMode] = useState<boolean>(false);
 
   const [projectionData, setProjectionData] = useState<any[] | null>(null);
   const [projecting, setProjecting] = useState<boolean>(false);
@@ -168,9 +169,25 @@ export default function App() {
       fetchData();
     }, 12000);
 
+    // Continuous dynamic system logs (Every 8s) to show active background simulation
+    const logsInterval = setInterval(() => {
+      const logs = [
+        "SYS: Streaming municipal sensor channels... Status: Optimal",
+        "SYS: Connected to Gemini 2.5 Flash model instance.",
+        "GIS: Mapping haversine coordinates for District Sub-grid 14.",
+        "GRID: Power substation 12B report - active load balanced.",
+        "TRANSIT: Recalculating transit corridors throughput velocity.",
+        "ENV: Scanning Particulate PM2.5 sensors in Zone 3.",
+        "API: Cache buffers clear. Standby for query."
+      ];
+      const randomLog = logs[Math.floor(Math.random() * logs.length)];
+      logMessage(randomLog);
+    }, 8000);
+
     return () => {
       clearInterval(clockInterval);
       clearInterval(metricsInterval);
+      clearInterval(logsInterval);
     };
   }, []);
 
@@ -365,6 +382,48 @@ export default function App() {
                 </div>
               )}
             </div>
+
+            <button
+              onClick={() => {
+                const newMode = !isCrisisMode;
+                setIsCrisisMode(newMode);
+                if (newMode) {
+                  setTransitDisruption(85);
+                  setTempOffset(8);
+                  setGreenInitiative(10);
+                  logMessage("⚠️ [ALARM] CRISIS CONTROL PROTOCOL ACTIVATED: Spiking municipal telemetry constraints.");
+                  if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance("System high alert. Commencing emergency dispatch protocols for District 7 anomaly.");
+                    utterance.rate = 1.0;
+                    utterance.pitch = 0.9;
+                    window.speechSynthesis.speak(utterance);
+                  }
+                  fetchData(true, latitude, longitude, 8, 85, 10);
+                } else {
+                  setTransitDisruption(24);
+                  setTempOffset(2);
+                  setGreenInitiative(45);
+                  logMessage("🛡️ [RESOLVED] Crisis resolved. Normalizing system parameters to baseline vectors.");
+                  if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance("Crisis resolved. Resetting system parameters to standard operating vectors.");
+                    utterance.rate = 1.05;
+                    window.speechSynthesis.speak(utterance);
+                  }
+                  fetchData(true, latitude, longitude, 2, 24, 45);
+                }
+              }}
+              className={`p-1.5 rounded-lg border font-mono font-bold text-xs transition-all flex items-center gap-1 px-2.5 uppercase ${
+                isCrisisMode 
+                  ? "bg-rose-950 border-rose-600 text-rose-400 animate-pulse shadow-lg shadow-rose-600/30" 
+                  : "bg-slate-800 border-slate-700 text-slate-400 hover:border-rose-800 hover:text-rose-400"
+              }`}
+              title="Trigger Mock Crisis Protocol"
+            >
+              <ShieldAlert className="w-4 h-4 text-rose-500" />
+              <span>{isCrisisMode ? "CRISIS ACTIVE" : "CRISIS OFF"}</span>
+            </button>
 
             <button
               onClick={() => fetchData(true)}
