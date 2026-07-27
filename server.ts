@@ -91,6 +91,52 @@ async function startServer() {
     return { name: "Custom Sector", temp, aqi, traffic, metro, energyPeak };
   };
 
+  // Dynamic API proxy to Flask server (port 5000) if active
+  app.use("/api", async (req, res, next) => {
+    const flaskPort = 5000;
+    const flaskUrl = `http://127.0.0.1:${flaskPort}${req.originalUrl}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1000);
+
+    try {
+      const headers: Record<string, string> = {};
+      for (const [key, value] of Object.entries(req.headers)) {
+        if (typeof value === "string") {
+          headers[key] = value;
+        } else if (Array.isArray(value)) {
+          headers[key] = value.join(", ");
+        }
+      }
+      delete headers["host"];
+
+      const options: RequestInit = {
+        method: req.method,
+        headers,
+        signal: controller.signal
+      };
+
+      if (req.method !== "GET" && req.method !== "HEAD" && req.body) {
+        options.body = JSON.stringify(req.body);
+        headers["content-type"] = "application/json";
+      }
+
+      const response = await fetch(flaskUrl, options);
+      clearTimeout(timeoutId);
+
+      res.status(response.status);
+      response.headers.forEach((value, key) => {
+        res.setHeader(key, value);
+      });
+
+      const body = await response.text();
+      res.send(body);
+    } catch (err) {
+      clearTimeout(timeoutId);
+      // Flask server is not running or timed out; fall back to local mock APIs in server.ts
+      next();
+    }
+  });
+
   // API Routes
   app.get("/api/domains", (req, res) => {
     res.json(DOMAINS);

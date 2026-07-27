@@ -2,7 +2,7 @@ import os
 import random
 import time
 import math
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, send_from_directory
 # pyrefly: ignore [missing-import]
 from google import genai
 # pyrefly: ignore [missing-import]
@@ -12,7 +12,12 @@ from dotenv import load_dotenv
 # Load environmental variables
 load_dotenv()
 
-app = Flask(__name__)
+# Check if React dist folder exists to serve the compiled SPA
+dist_dir = os.path.join(os.path.dirname(__file__), "dist")
+if os.path.exists(dist_dir) and os.path.exists(os.path.join(dist_dir, "index.html")):
+    app = Flask(__name__, static_folder=dist_dir, static_url_path="")
+else:
+    app = Flask(__name__)
 
 # Initialize Gemini AI client if GEMINI_API_KEY is present
 ai_client = None
@@ -476,9 +481,7 @@ def get_fallback_response(message, lat, lng, image=None):
         "Simply state the domain you want to inspect, and the analytical model will compute the current status, predictions, and recommendations."
     )
 
-@app.route("/")
-def home():
-    return render_template("index.html")
+# The home route is handled dynamically by the catch-all route at the end of the file
 
 def get_location_stats(lat: float, lng: float):
     def is_close(val1, val2):
@@ -833,6 +836,18 @@ def projection():
 
     fallback_data = get_fallback_projection()
     return jsonify(fallback_data)
+
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def catch_all(path):
+    if app.static_folder and os.path.exists(os.path.join(app.static_folder, "index.html")):
+        if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+            return send_from_directory(app.static_folder, path)
+        return send_from_directory(app.static_folder, "index.html")
+    else:
+        if path == "":
+            return render_template("index.html")
+        return "Not Found", 404
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
